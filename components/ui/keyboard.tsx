@@ -970,7 +970,7 @@ const MINT_DARK_KEYS: KEYCODE[] = [
 const KEYBOARD_THEMES: Record<KeyboardThemeName, KeyboardThemeDefinition> = {
   classic: {
     variants: {
-      accent: { bg: "#c41e3a", text: "rgba(255,255,255,0.92)" },
+      accent: { bg: "var(--color-primary)", text: "var(--color-primary-foreground)" },
       dark: { bg: "#3a3a3a", text: "rgba(255,255,255,0.82)" },
       light: { bg: "#e8e8e8", text: "rgba(0,0,0,0.78)" },
     },

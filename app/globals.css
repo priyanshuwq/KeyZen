@@ -128,6 +128,38 @@
     }
 }
 
+/* ── Accent colour themes ─────────────────────────────────────── */
+/* teal (default — matches :root values, listed for explicitness) */
+:root[data-accent="teal"] { --primary: oklch(0.52 0.105 223.128); --ring: oklch(0.55 0.105 223); }
+:root.dark[data-accent="teal"] { --primary: oklch(0.65 0.15 195); --ring: oklch(0.55 0.12 195); }
+
+/* red */
+:root[data-accent="red"] { --primary: oklch(0.55 0.22 25); --ring: oklch(0.55 0.22 25); }
+:root.dark[data-accent="red"] { --primary: oklch(0.65 0.22 25); --ring: oklch(0.55 0.2 25); }
+
+/* amber */
+:root[data-accent="amber"] { --primary: oklch(0.65 0.18 75); --ring: oklch(0.65 0.18 75); }
+:root.dark[data-accent="amber"] { --primary: oklch(0.78 0.18 75); --ring: oklch(0.65 0.16 75); }
+
+/* purple */
+:root[data-accent="purple"] { --primary: oklch(0.55 0.2 295); --ring: oklch(0.55 0.2 295); }
+:root.dark[data-accent="purple"] { --primary: oklch(0.68 0.22 295); --ring: oklch(0.55 0.18 295); }
+
+/* green */
+:root[data-accent="green"] { --primary: oklch(0.55 0.17 145); --ring: oklch(0.55 0.17 145); }
+:root.dark[data-accent="green"] { --primary: oklch(0.68 0.18 145); --ring: oklch(0.55 0.15 145); }
+
+/* rose */
+:root[data-accent="rose"] { --primary: oklch(0.57 0.2 355); --ring: oklch(0.57 0.2 355); }
+:root.dark[data-accent="rose"] { --primary: oklch(0.68 0.22 355); --ring: oklch(0.55 0.18 355); }
+
+/* blue */
+:root[data-accent="blue"] { --primary: oklch(0.52 0.2 255); --ring: oklch(0.52 0.2 255); }
+:root.dark[data-accent="blue"] { --primary: oklch(0.65 0.2 255); --ring: oklch(0.52 0.18 255); }
+
+/* ── Typing font ──────────────────────────────────────────────── */
+:root { --typing-font: var(--font-mono); }
+
 @keyframes cursor-blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0; }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, LayoutGroup } from "motion/react";
 import { generateWords } from "@/lib/words";
+import { getQuote, type QuoteLength } from "@/lib/quotes";
 import { cn } from "@/lib/utils";
 import {
   Tabs,
@@ -17,6 +18,9 @@ import {
   IconMountain,
   IconRefresh,
 } from "@tabler/icons-react";
+import { ResultsScreen, type ResultStats, type WpmSnapshot } from "@/components/results-screen";
+import { useSettings } from "@/components/settings-context";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type TestMode = "time" | "words" | "quote" | "zen";
 type TimeOption = 15 | 30 | 60 | 120;
@@ -24,12 +28,16 @@ type WordOption = 10 | 25 | 50 | 100;
 
 interface TypingTestProps {
   onKeyHighlight?: (key: string | null) => void;
+  onFinished?: (finished: boolean) => void;
 }
 
-export function TypingTest({ onKeyHighlight }: TypingTestProps) {
+export function TypingTest({ onKeyHighlight, onFinished }: TypingTestProps) {
+  const { realtimeWpm } = useSettings();
   const [mode, setMode] = useState<TestMode>("time");
   const [timeOption, setTimeOption] = useState<TimeOption>(30);
   const [wordOption, setWordOption] = useState<WordOption>(25);
+  const [quoteLength, setQuoteLength] = useState<QuoteLength>("medium");
+  const [quoteAuthor, setQuoteAuthor] = useState<string | null>(null);
   const [punctuation, setPunctuation] = useState(false);
 
   const [words, setWords] = useState<string[]>([]);
@@ -37,6 +45,7 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
   const [wordIndex, setWordIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
   const [started, setStarted] = useState(false);
+  const [rowOffset, setRowOffset] = useState(0);
   const [finished, setFinished] = useState(false);
   const [timeLeft, setTimeLeft] = useState(30);
   const [startTime, setStartTime] = useState<number | null>(null);
@@ -47,8 +56,17 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
   // WPM / accuracy
   const [correctChars, setCorrectChars] = useState(0);
   const [totalChars, setTotalChars] = useState(0);
+  const [incorrectChars, setIncorrectChars] = useState(0);
+  const [extraChars, setExtraChars] = useState(0);
   const [wpm, setWpm] = useState(0);
   const [accuracy, setAccuracy] = useState(100);
+  const [wpmHistory, setWpmHistory] = useState<WpmSnapshot[]>([]);
+
+  // Refs for interval-safe access to live values
+  const correctCharsRef = useRef(0);
+  const allTypedRef = useRef(0); // every keystroke
+  const errorsThisSecondRef = useRef(0);
+  const elapsedSecondsRef = useRef(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const wordsContainerRef = useRef<HTMLDivElement>(null);
@@ -64,8 +82,14 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
 
   // Generate words on mount & mode change
   const resetTest = useCallback(() => {
-    const newWords = generateWords(wordCount, { punctuation });
-    setWords(newWords);
+    setQuoteAuthor(null);
+    if (mode === "quote") {
+      const { words: newWords, author } = getQuote(quoteLength);
+      setWords(newWords);
+      setQuoteAuthor(author);
+    } else {
+      setWords(generateWords(wordCount, { punctuation }));
+    }
     setTyped("");
     setWordIndex(0);
     setCharIndex(0);
@@ -75,8 +99,15 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
     setWordInputs([]);
     setCorrectChars(0);
     setTotalChars(0);
+    setIncorrectChars(0);
+    setExtraChars(0);
     setWpm(0);
     setAccuracy(100);
+    setWpmHistory([]);
+    correctCharsRef.current = 0;
+    allTypedRef.current = 0;
+    errorsThisSecondRef.current = 0;
+    elapsedSecondsRef.current = 0;
     if (mode === "time") {
       setTimeLeft(timeOption);
     }
@@ -84,41 +115,46 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (wordsContainerRef.current) {
-      wordsContainerRef.current.scrollTop = 0;
-    }
+    setRowOffset(0);
+    onFinished?.(false);
     inputRef.current?.focus();
-  }, [wordCount, mode, timeOption, punctuation]);
+  }, [wordCount, mode, timeOption, quoteLength, punctuation, onFinished]);
 
   useEffect(() => {
     resetTest();
   }, [resetTest]);
 
-  // Scroll active word into view — snap by one line height when word enters 3rd row
+  // Translate words wrapper up when active word reaches the 3rd visible row
   useEffect(() => {
-    if (!activeWordRef.current || !wordsContainerRef.current) return;
-    const container = wordsContainerRef.current;
+    if (!activeWordRef.current) return;
     const word = activeWordRef.current;
-    const lineHeight = word.offsetHeight;
-    const wordTop = word.offsetTop;
-
-    // Snap scrollTop so the active word is always within the first 2 visible rows
-    if (wordTop >= container.scrollTop + lineHeight * 2) {
-      // Word moved into 3rd row — scroll down by one line
-      container.scrollTop = wordTop - lineHeight;
-    } else if (wordTop < container.scrollTop) {
-      // Word moved above visible area (backspace to prev word) — scroll up
-      container.scrollTop = wordTop;
-    }
+    // row height = word height + gap-y-1 (4px)
+    const lineH = word.offsetHeight + 4;
+    const row = Math.round(word.offsetTop / lineH);
+    // Keep active word in the 2nd visible row (row index 1)
+    const newOffset = Math.max(0, row - 1) * lineH;
+    setRowOffset(newOffset);
   }, [wordIndex]);
 
   // Timer for time mode
   useEffect(() => {
     if (started && mode === "time" && !finished) {
       timerRef.current = setInterval(() => {
+        elapsedSecondsRef.current += 1;
+        const elapsed = elapsedSecondsRef.current;
+        const elapsedMin = elapsed / 60;
+        const snapWpm = elapsedMin > 0 ? Math.round(correctCharsRef.current / 5 / elapsedMin) : 0;
+        const snapRaw = elapsedMin > 0 ? Math.round(allTypedRef.current / 5 / elapsedMin) : 0;
+        setWpmHistory((prev) => [
+          ...prev,
+          { second: elapsed, wpm: snapWpm, raw: snapRaw, errors: errorsThisSecondRef.current },
+        ]);
+        errorsThisSecondRef.current = 0;
+
         setTimeLeft((prev) => {
           if (prev <= 1) {
             setFinished(true);
+            onFinished?.(true);
             if (timerRef.current) clearInterval(timerRef.current);
             return 0;
           }
@@ -140,6 +176,21 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
       }
     }
   }, [correctChars, started, startTime, finished, typed]);
+
+  // Record a WPM snapshot for words/quote mode (called on each word completion)
+  const recordWordSnapshot = useCallback((newCorrectChars: number) => {
+    if (!startTime || mode === "time") return;
+    const elapsedSec = (Date.now() - startTime) / 1000;
+    elapsedSecondsRef.current = elapsedSec;
+    const elapsedMin = elapsedSec / 60 || 1 / 60;
+    const snapWpm = Math.round(newCorrectChars / 5 / elapsedMin);
+    const snapRaw = Math.round(allTypedRef.current / 5 / elapsedMin);
+    setWpmHistory((prev) => [
+      ...prev,
+      { second: Math.round(elapsedSec), wpm: snapWpm, raw: snapRaw, errors: errorsThisSecondRef.current },
+    ]);
+    errorsThisSecondRef.current = 0;
+  }, [startTime, mode]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -176,26 +227,37 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
         // Record this word's input
         setWordInputs((prev) => [...prev, typed]);
 
-        // Count correct chars
+        // Count correct / incorrect / extra chars
         let correct = 0;
-        for (let i = 0; i < typed.length; i++) {
+        let incorrect = 0;
+        for (let i = 0; i < Math.min(typed.length, currentWord.length); i++) {
           if (typed[i] === currentWord[i]) correct++;
+          else { incorrect++; errorsThisSecondRef.current++; }
         }
-        setCorrectChars((prev) => prev + correct);
+        const extra = Math.max(0, typed.length - currentWord.length);
+        if (extra > 0) errorsThisSecondRef.current++;
+
+        correctCharsRef.current += correct;
+        const newCorrectChars = correctChars + correct;
+        setCorrectChars(newCorrectChars);
+        setIncorrectChars((prev) => prev + incorrect);
+        setExtraChars((prev) => prev + extra);
         setTotalChars((prev) => prev + currentWord.length);
 
         if (totalChars + currentWord.length > 0) {
           setAccuracy(
             Math.round(
-              ((correctChars + correct) / (totalChars + currentWord.length)) *
-                100,
+              (newCorrectChars / (totalChars + currentWord.length)) * 100,
             ),
           );
         }
 
+        recordWordSnapshot(newCorrectChars);
+
         // Move to next word
         if (wordIndex + 1 >= words.length) {
           setFinished(true);
+          onFinished?.(true);
           return;
         }
         setWordIndex((prev) => prev + 1);
@@ -218,8 +280,33 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
       }
 
       if (e.key.length === 1) {
+        allTypedRef.current += 1;
         const nextTyped = typed + e.key;
         setTyped(nextTyped);
+
+        // Auto-finish when last char of last word is typed (words/quote mode)
+        const isLastWord = wordIndex + 1 >= words.length;
+        if (isLastWord && nextTyped.length >= currentWord.length && mode !== "time" && mode !== "zen") {
+          // Tally the final word
+          let correct = 0;
+          let incorrect = 0;
+          for (let i = 0; i < Math.min(nextTyped.length, currentWord.length); i++) {
+            if (nextTyped[i] === currentWord[i]) correct++;
+            else { incorrect++; errorsThisSecondRef.current++; }
+          }
+          const extra = Math.max(0, nextTyped.length - currentWord.length);
+          correctCharsRef.current += correct;
+          const newCorrectCharsAuto = correctChars + correct;
+          setCorrectChars(newCorrectCharsAuto);
+          setIncorrectChars((prev) => prev + incorrect);
+          setExtraChars((prev) => prev + extra);
+          setTotalChars((prev) => prev + currentWord.length);
+          setWordInputs((prev) => [...prev, nextTyped]);
+          recordWordSnapshot(newCorrectCharsAuto);
+          setFinished(true);
+          onFinished?.(true);
+          return;
+        }
 
         // Highlight next expected key
         const nextCharIndex = nextTyped.length;
@@ -238,76 +325,80 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
       typed,
       correctChars,
       totalChars,
+      wordInputs,
       resetTest,
       onKeyHighlight,
+      recordWordSnapshot,
     ],
   );
 
   const handleFocus = () => inputRef.current?.focus();
 
+  // Keep input focused: re-focus on any keydown anywhere on the page
+  useEffect(() => {
+    if (finished) return;
+    const onGlobalKeyDown = () => {
+      if (document.activeElement !== inputRef.current) {
+        inputRef.current?.focus();
+      }
+    };
+    document.addEventListener("keydown", onGlobalKeyDown, true);
+    return () => document.removeEventListener("keydown", onGlobalKeyDown, true);
+  }, [finished]);
+
+  // Re-focus when the input loses focus (e.g. user clicks elsewhere)
+  const handleInputBlur = useCallback(() => {
+    if (!finished) {
+      // Small delay so UI interactions (settings panel, buttons) still work
+      setTimeout(() => {
+        if (!finished) inputRef.current?.focus();
+      }, 100);
+    }
+  }, [finished]);
+
   // Results screen
   if (finished) {
-    const elapsed = startTime ? (Date.now() - startTime) / 1000 / 60 : 1;
-    const finalWpm = Math.round(correctChars / 5 / elapsed);
+    const elapsed = startTime ? (Date.now() - startTime) / 1000 : elapsedSecondsRef.current;
+    const elapsedMin = elapsed / 60 || 1/60;
+    const finalWpm = Math.round(correctChars / 5 / elapsedMin);
+    const finalRaw = Math.round(allTypedRef.current / 5 / elapsedMin);
 
-    return (
-      <div
-        className="flex w-full max-w-4xl flex-col items-center gap-8"
-        onClick={handleFocus}
-      >
-        <div className="flex items-center gap-12">
-          <div className="flex flex-col items-center">
-            <span className="text-sm text-muted-foreground">wpm</span>
-            <span className="font-mono text-5xl font-bold text-primary">
-              {finalWpm}
-            </span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span className="text-sm text-muted-foreground">acc</span>
-            <span className="font-mono text-5xl font-bold text-primary">
-              {accuracy}%
-            </span>
-          </div>
-        </div>
+    // Consistency = 100 - (stdDev / mean * 100)
+    const wpmValues = wpmHistory.map((s) => s.wpm).filter((v) => v > 0);
+    let consistency = 100;
+    if (wpmValues.length > 1) {
+      const mean = wpmValues.reduce((a, b) => a + b, 0) / wpmValues.length;
+      const variance = wpmValues.reduce((a, b) => a + (b - mean) ** 2, 0) / wpmValues.length;
+      const stdDev = Math.sqrt(variance);
+      consistency = Math.max(0, Math.round(100 - (stdDev / (mean || 1)) * 100));
+    }
 
-        <div className="flex items-center gap-6 text-sm text-muted-foreground">
-          <div className="flex flex-col items-center">
-            <span>characters</span>
-            <span className="font-mono text-foreground">
-              {correctChars}/{totalChars}
-            </span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span>words</span>
-            <span className="font-mono text-foreground">{wordIndex}</span>
-          </div>
-          <div className="flex flex-col items-center">
-            <span>time</span>
-            <span className="font-mono text-foreground">
-              {Math.round(elapsed * 60)}s
-            </span>
-          </div>
-        </div>
+    const stats: ResultStats = {
+      wpm: finalWpm,
+      accuracy,
+      raw: finalRaw,
+      correctChars,
+      incorrectChars,
+      extraChars,
+      missedChars: 0,
+      consistency,
+      elapsedSeconds: Math.round(elapsed),
+      mode,
+      modeDetail: mode === "time" ? String(timeOption) : mode === "words" ? String(wordOption) : mode === "quote" ? quoteLength : "",
+      wpmHistory,
+    };
 
-        <button
-          onClick={resetTest}
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <IconRefresh size={18} />
-          restart
-        </button>
-      </div>
-    );
+    return <ResultsScreen stats={stats} onRestart={resetTest} />;
   }
 
   return (
     <div
-      className="flex w-full max-w-4xl flex-col items-center gap-6"
+      className="flex w-full max-w-4xl flex-col items-center gap-3"
       onClick={handleFocus}
     >
-      {/* Mode selector */}
-      <div className="flex items-center gap-1">
-        {/* Punctuation toggle */}
+      {/* Mode selector — mobile: stacked col, desktop: single row */}
+      <div className="flex flex-col items-center gap-1 sm:flex-row sm:items-center">
+        {/* Punctuation — own row on mobile */}
         <button
           onClick={() => setPunctuation(!punctuation)}
           className={cn(
@@ -319,7 +410,7 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
           punctuation
         </button>
 
-        <div className="mx-1 h-4 w-px bg-border" />
+        <div className="hidden h-4 w-px bg-border sm:mx-1 sm:block" />
 
         {/* Mode tabs */}
         <Tabs
@@ -342,9 +433,9 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
           </TabsList>
         </Tabs>
 
-        <div className="mx-1 h-4 w-px bg-border" />
+        <div className="hidden h-4 w-px bg-border sm:mx-1 sm:block" />
 
-        {/* Time / word-count tabs — always visible, disabled in zen/quote */}
+        {/* Count / time / quote-length tabs */}
         {mode === "words" ? (
           <Tabs
             value={String(wordOption)}
@@ -359,6 +450,20 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
               ))}
             </TabsList>
           </Tabs>
+        ) : mode === "quote" ? (
+          <Tabs
+            value={quoteLength}
+            onValueChange={(v) => setQuoteLength(v as QuoteLength)}
+            className="flex items-center"
+          >
+            <TabsList>
+              {(["short", "medium", "long"] as QuoteLength[]).map((q) => (
+                <TabsTrigger key={q} value={q} className="px-3 text-xs">
+                  {q}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         ) : (
           <Tabs
             value={String(timeOption)}
@@ -367,18 +472,36 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
             }}
             className="flex items-center"
           >
-            <TabsList>
-              {[15, 30, 60, 120].map((t) => (
-                <TabsTrigger
-                  key={t}
-                  value={String(t)}
-                  disabled={mode !== "time"}
-                  className="px-3 text-xs"
-                >
-                  {t}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+            <TooltipProvider>
+              <TabsList>
+                {[15, 30, 60, 120].map((t) => {
+                  const isDisabled = mode !== "time";
+                  const trigger = (
+                    <TabsTrigger
+                      key={t}
+                      value={String(t)}
+                      disabled={isDisabled}
+                      className="px-3 text-xs"
+                    >
+                      {t}
+                    </TabsTrigger>
+                  );
+                  if (!isDisabled) return trigger;
+                  return (
+                    <Tooltip key={t}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-not-allowed">
+                          {trigger}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom">
+                        only available in time mode
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </TabsList>
+            </TooltipProvider>
           </Tabs>
         )}
       </div>
@@ -386,7 +509,7 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
       {/* Words display — timer anchored top-left inside, space always reserved */}
       <div className="relative w-full">
         {/* Timer top-left — always occupies space, invisible before start */}
-        <div className="mb-3 h-8">
+        <div className="mb-3 flex h-8 items-center gap-3">
           {mode === "time" && (
             <span
               className={cn(
@@ -402,27 +525,43 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
               {wordIndex}/{wordOption}
             </span>
           )}
+          {realtimeWpm && started && wpm > 0 && (
+            <span className="font-mono text-sm text-muted-foreground transition-opacity duration-200">
+              {wpm} <span className="text-xs opacity-60">wpm</span>
+            </span>
+          )}
         </div>
 
       <div
         ref={wordsContainerRef}
-        className="relative h-[8.5rem] w-full overflow-hidden font-mono text-2xl leading-relaxed"
+        className="relative h-44 w-full overflow-hidden text-2xl leading-relaxed"
+        style={{ fontFamily: "var(--typing-font)" }}
       >
         <input
           ref={inputRef}
           className="absolute opacity-0"
           onKeyDown={handleKeyDown}
+          onBlur={handleInputBlur}
           value={typed}
           onChange={() => {}}
           autoFocus
           autoComplete="off"
           autoCorrect="off"
-          autoCapitalize="off"
+          autoCapitalize="none"
           spellCheck={false}
         />
 
+        {/* Top fade — hides scrolled-away rows */}
+        {rowOffset > 0 && (
+          <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-10 bg-gradient-to-b from-background to-transparent" />
+        )}
+
         <LayoutGroup id="words">
-        <div className="flex flex-wrap gap-x-2.5 gap-y-1">
+        <motion.div
+          className="flex flex-wrap gap-x-2.5 gap-y-1"
+          animate={{ y: -rowOffset }}
+          transition={{ type: "spring", stiffness: 300, damping: 30, mass: 0.8 }}
+        >
           {words.map((word, wIdx) => {
             const isActive = wIdx === wordIndex;
             const isPast = wIdx < wordIndex;
@@ -480,15 +619,20 @@ export function TypingTest({ onKeyHighlight }: TypingTestProps) {
               </div>
             );
           })}
-        </div>
+        </motion.div>
         </LayoutGroup>
       </div>
       </div>{/* end words wrapper */}
 
+      {/* Quote author */}
+      {mode === "quote" && quoteAuthor && (
+        <p className="text-xs text-muted-foreground/50">— {quoteAuthor}</p>
+      )}
+
       {/* Restart button */}
       <button
         onClick={resetTest}
-        className="mt-2 rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
+        className="rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground"
         title="Restart test"
       >
         <IconRefresh size={18} />

@@ -1,58 +1,86 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { NextThemeSwitcher } from "@/components/kibo-ui/theme-switcher"
+import { cn } from "@/lib/utils"
 import { Keyboard } from "@/components/ui/keyboard"
 import { TypingTest } from "@/components/typing-test"
-import {
-  IconCrown,
-  IconInfoCircle,
-  IconSettings,
-} from "@tabler/icons-react"
+import { SettingsPanel } from "@/components/settings-panel"
+import { useSettings } from "@/components/settings-context"
+import { IconSettings } from "@tabler/icons-react"
+import { Button } from "@/components/ui/button";
+import { GithubLogo } from "@phosphor-icons/react";
 
 export default function Page() {
-  const [highlightedKey, setHighlightedKey] = useState<string | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [isFinished, setIsFinished] = useState(false)
+  const [restartKey, setRestartKey] = useState(0)
+  const { showKeyboard, soundEnabled } = useSettings()
 
-  const handleKeyHighlight = useCallback((key: string | null) => {
-    setHighlightedKey(key)
-  }, [])
+  const handleKeyHighlight = useCallback((_key: string | null) => {}, [])
+
+  const handleLogoClick = () => {
+    setIsFinished(false)
+    setRestartKey(k => k + 1)
+  }
+
+  const showFooter = !isFinished && showKeyboard  // controls layout split, not mounting
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-background">
       {/* Header */}
       <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
-        <div className="flex items-center gap-4">
-          <span className="font-[family-name:var(--font-doto)] text-3xl font-bold text-primary">
-            typecraft
-          </span>
-          <nav className="flex items-center gap-1 text-muted-foreground">
-            <button className="rounded-lg p-2 transition-colors hover:text-foreground">
-              <IconCrown size={18} />
-            </button>
-            <button className="rounded-lg p-2 transition-colors hover:text-foreground">
-              <IconInfoCircle size={18} />
-            </button>
-            <button className="rounded-lg p-2 transition-colors hover:text-foreground">
-              <IconSettings size={18} />
-            </button>
-          </nav>
-        </div>
         <div className="flex items-center gap-3">
-          <NextThemeSwitcher />
+          <span
+            onClick={handleLogoClick}
+            className="cursor-pointer font-(family-name:--font-doto) text-4xl font-bold text-primary"
+          >
+            KeyZen
+          </span>
+          <button
+            onClick={() => setSettingsOpen(true)}
+            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <IconSettings size={16} />
+          </button>
         </div>
+      <Button variant={"outline"}>
+       <a href="https://github.com/shivabhattacharjee/KeyZen" target="_blank" rel="noopener noreferrer" className="flex gap-2 items-center"><GithubLogo/> Open Source</a>
+      </Button>
       </header>
 
-      {/* Main content - typing test centered */}
-      <main className="flex flex-1 flex-col items-center justify-center gap-8 px-6 py-10">
-        <TypingTest onKeyHighlight={handleKeyHighlight} />
-      </main>
+      {/* Body — two equal halves when keyboard is visible */}
+      <div className="flex flex-1 flex-col">
+        {/* Top half: typing test */}
+        <main className={cn(
+          "flex flex-col px-6",
+          isFinished
+            ? "flex-1 justify-center px-10 py-2"
+            : showFooter
+              ? "flex-1 items-center justify-center lg:justify-end lg:pb-8"
+              : "flex-1 items-center justify-center"
+        )}>
+          <TypingTest
+            key={restartKey}
+            onKeyHighlight={handleKeyHighlight}
+            onFinished={setIsFinished}
+          />
+        </main>
 
-      {/* Footer with keyboard */}
-      <footer className="flex shrink-0 flex-col items-center gap-4 border-t border-border px-4 pb-6 pt-4">
-        <div className="hidden scale-[0.85] lg:block">
-          <Keyboard theme="classic" enableHaptics enableSound />
-        </div>
-      </footer>
+        {/* Bottom half: keyboard — desktop only */}
+        {/* Always mounted on desktop when sound is on so audio context stays alive */}
+        {!isFinished && (
+          <footer className={cn(
+            "hidden flex-1 flex-col items-center justify-center border-t border-border lg:flex",
+            !showKeyboard && "invisible h-0 overflow-hidden border-0"
+          )}>
+            <div className="scale-[0.85]">
+              <Keyboard theme="classic" enableHaptics enableSound={soundEnabled} />
+            </div>
+          </footer>
+        )}
+      </div>
+
+      <SettingsPanel open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   )
 }
