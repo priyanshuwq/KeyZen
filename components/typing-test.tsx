@@ -24,6 +24,11 @@ import {
 } from "@tabler/icons-react";
 import { ResultsScreen, type ResultStats, type WpmSnapshot } from "@/components/results-screen";
 import { useSettings } from "@/components/settings-context";
+import {
+  accuracyFromCounts,
+  countMonkeytypeStyle,
+  wpmNumeratorFromCounts,
+} from "@/lib/wpm-count";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type TestMode = "time" | "words" | "quote" | "zen";
@@ -231,12 +236,7 @@ export function TypingTest({
   const [wordInputs, setWordInputs] = useState<string[]>([]);
 
 
-  const [correctChars, setCorrectChars] = useState(0);
-  const [totalChars, setTotalChars] = useState(0);
-  const [incorrectChars, setIncorrectChars] = useState(0);
-  const [extraChars, setExtraChars] = useState(0);
   const [wpm, setWpm] = useState(0);
-  const [accuracy, setAccuracy] = useState(100);
   const [wpmHistory, setWpmHistory] = useState<WpmSnapshot[]>([]);
 
   const correctCharsRef = useRef(0);
@@ -281,6 +281,24 @@ export function TypingTest({
     return 100;
   }, [mode, wordOption]);
 
+  const mtCounts = useMemo(
+    () =>
+      countMonkeytypeStyle({
+        targetWords: words,
+        wordInputs,
+        typed,
+        wordIndex,
+        mode,
+        final: finished,
+      }),
+    [words, wordInputs, typed, wordIndex, mode, finished],
+  );
+
+  const wpmNumerator = wpmNumeratorFromCounts(mtCounts);
+  const accuracy = accuracyFromCounts(mtCounts);
+
+  correctCharsRef.current = wpmNumerator;
+
   const resetTestImmediate = useCallback(() => {
     setQuoteAuthor(null);
     if (mode === "quote") {
@@ -296,12 +314,7 @@ export function TypingTest({
     setFinished(false);
     setStartTime(null);
     setWordInputs([]);
-    setCorrectChars(0);
-    setTotalChars(0);
-    setIncorrectChars(0);
-    setExtraChars(0);
     setWpm(0);
-    setAccuracy(100);
     setWpmHistory([]);
     correctCharsRef.current = 0;
     allTypedRef.current = 0;
@@ -395,27 +408,84 @@ export function TypingTest({
   useEffect(() => {
     if (started && startTime && !finished) {
       const elapsed = (Date.now() - startTime) / 1000 / 60;
-      if (elapsed > 0) setWpm(Math.round(correctChars / 5 / elapsed));
+      if (elapsed > 0) setWpm(Math.round(wpmNumerator / 5 / elapsed));
     }
-  }, [correctChars, started, startTime, finished, typed]);
+  }, [wpmNumerator, started, startTime, finished, typed]);
 
 
-  const recordWordSnapshot = useCallback((newCorrectChars: number) => {
-    if (!startTime || mode === "time") return;
-    const elapsedSec = (Date.now() - startTime) / 1000;
-    elapsedSecondsRef.current = elapsedSec;
-    const elapsedMin = elapsedSec / 60 || 1 / 60;
-    const snapWpm = Math.round(newCorrectChars / 5 / elapsedMin);
-    const snapRaw = Math.round(allTypedRef.current / 5 / elapsedMin);
-    setWpmHistory((prev) => [
-      ...prev,
-      { second: Math.round(elapsedSec), wpm: snapWpm, raw: snapRaw, errors: errorsThisSecondRef.current },
-    ]);
-    errorsThisSecondRef.current = 0;
-  }, [startTime, mode]);
+  const recordWordSnapshot = useCallback(
+    (
+      snapshotWordInputs: string[],
+      snapshotTyped: string,
+      snapshotWordIndex: number,
+    ) => {
+      if (!startTime || mode === "time") return;
+      const snapCounts = countMonkeytypeStyle({
+        targetWords: words,
+        wordInputs: snapshotWordInputs,
+        typed: snapshotTyped,
+        wordIndex: snapshotWordIndex,
+        mode,
+        final: false,
+      });
+      const snapNum = wpmNumeratorFromCounts(snapCounts);
+      const elapsedSec = (Date.now() - startTime) / 1000;
+      elapsedSecondsRef.current = elapsedSec;
+      const elapsedMin = elapsedSec / 60 || 1 / 60;
+      const snapWpm = Math.round(snapNum / 5 / elapsedMin);
+      const snapRaw = Math.round(allTypedRef.current / 5 / elapsedMin);
+      setWpmHistory((prev) => [
+        ...prev,
+        { second: Math.round(elapsedSec), wpm: snapWpm, raw: snapRaw, errors: errorsThisSecondRef.current },
+      ]);
+      errorsThisSecondRef.current = 0;
+    },
+    [startTime, mode, words],
+  );
+
+  /** Clear the whole current word at once (macOS option+⌫); if already empty, jump to the previous word. */
+  const clearWordOrNavigateBack = useCallback(() => {
+    if (typed.length > 0) {
+      setTyped("");
+      const cw = words[wordIndex];
+      onKeyHighlight?.(cw && cw.length > 0 ? cw[0] : null);
+      return;
+    }
+    if (wordIndex <= 0) return;
+    const prevInput = wordInputs[wordIndex - 1];
+    const prevWord = words[wordIndex - 1];
+    setWordIndex((prev) => prev - 1);
+    setTyped(prevInput);
+    setWordInputs((prev) => prev.slice(0, -1));
+    if (prevInput.length < prevWord.length) onKeyHighlight?.(prevWord[prevInput.length]);
+    else onKeyHighlight?.(" ");
+  }, [typed, wordIndex, wordInputs, words, onKeyHighlight]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLInputElement>) => {
+      const isAltWordDelete =
+        e.altKey &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.shiftKey &&
+        (e.key === "Backspace" || e.key === "Delete");
+      const isCtrlBackspaceWordNav =
+        e.ctrlKey && !e.altKey && !e.metaKey && !e.shiftKey && e.key === "Backspace";
+
+      if (isAltWordDelete || isCtrlBackspaceWordNav) {
+        e.preventDefault();
+        if (finished) return;
+        if (!started) {
+          setStarted(true);
+          setStartTime(Date.now());
+          setShowControls(false);
+          onTypingActiveChange?.(true);
+        }
+        markTypingActive();
+        clearWordOrNavigateBack();
+        return;
+      }
+
       // Ignore any shortcut with a modifier key (Cmd+L, Ctrl+W, Alt+…, etc.)
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
@@ -450,36 +520,23 @@ export function TypingTest({
         e.preventDefault();
         if (typed.length === 0) return;
 
-        setWordInputs((prev) => [...prev, typed]);
-
-        let correct = 0;
-        let incorrect = 0;
         for (let i = 0; i < Math.min(typed.length, currentWord.length); i++) {
-          if (typed[i] === currentWord[i]) correct++;
-          else { incorrect++; errorsThisSecondRef.current++; }
+          if (typed[i] !== currentWord[i]) errorsThisSecondRef.current++;
         }
-        const extra = Math.max(0, typed.length - currentWord.length);
-        if (extra > 0) errorsThisSecondRef.current++;
+        if (typed.length > currentWord.length) errorsThisSecondRef.current++;
 
-        correctCharsRef.current += correct;
-        const newCorrectChars = correctChars + correct;
-        setCorrectChars(newCorrectChars);
-        setIncorrectChars((prev) => prev + incorrect);
-        setExtraChars((prev) => prev + extra);
-        setTotalChars((prev) => prev + currentWord.length);
-
-        if (totalChars + currentWord.length > 0) {
-          setAccuracy(Math.round((newCorrectChars / (totalChars + currentWord.length)) * 100));
-        }
-
-        recordWordSnapshot(newCorrectChars);
+        const nextInputs = [...wordInputs, typed];
+        const nextIndex = wordIndex + 1;
+        recordWordSnapshot(nextInputs, "", nextIndex);
 
         if (wordIndex + 1 >= words.length) {
+          setWordInputs(nextInputs);
           setFinished(true);
           onFinished?.(true);
           return;
         }
-        setWordIndex((prev) => prev + 1);
+        setWordInputs(nextInputs);
+        setWordIndex(nextIndex);
         setTyped("");
         onKeyHighlight?.(null);
         return;
@@ -504,21 +561,13 @@ export function TypingTest({
 
         const isLastWord = wordIndex + 1 >= words.length;
         if (isLastWord && nextTyped.length >= currentWord.length && mode !== "time" && mode !== "zen") {
-          let correct = 0;
-          let incorrect = 0;
           for (let i = 0; i < Math.min(nextTyped.length, currentWord.length); i++) {
-            if (nextTyped[i] === currentWord[i]) correct++;
-            else { incorrect++; errorsThisSecondRef.current++; }
+            if (nextTyped[i] !== currentWord[i]) errorsThisSecondRef.current++;
           }
-          const extra = Math.max(0, nextTyped.length - currentWord.length);
-          correctCharsRef.current += correct;
-          const newCorrectCharsAuto = correctChars + correct;
-          setCorrectChars(newCorrectCharsAuto);
-          setIncorrectChars((prev) => prev + incorrect);
-          setExtraChars((prev) => prev + extra);
-          setTotalChars((prev) => prev + currentWord.length);
-          setWordInputs((prev) => [...prev, nextTyped]);
-          recordWordSnapshot(newCorrectCharsAuto);
+          if (nextTyped.length > currentWord.length) errorsThisSecondRef.current++;
+          const nextInputs = [...wordInputs, nextTyped];
+          setWordInputs(nextInputs);
+          recordWordSnapshot(nextInputs, "", wordIndex + 1);
           setFinished(true);
           onFinished?.(true);
           return;
@@ -538,14 +587,13 @@ export function TypingTest({
       words,
       wordIndex,
       typed,
-      correctChars,
-      totalChars,
       wordInputs,
       resetTest,
       onKeyHighlight,
       recordWordSnapshot,
       markTypingActive,
       onTypingActiveChange,
+      clearWordOrNavigateBack,
     ],
   );
 
@@ -572,7 +620,7 @@ export function TypingTest({
   if (finished && !frozenStatsRef.current) {
     const elapsed = startTime ? (Date.now() - startTime) / 1000 : elapsedSecondsRef.current;
     const elapsedMin = elapsed / 60 || 1 / 60;
-    const finalWpm = Math.round(correctChars / 5 / elapsedMin);
+    const finalWpm = Math.round(wpmNumerator / 5 / elapsedMin);
     const finalRaw = Math.round(allTypedRef.current / 5 / elapsedMin);
 
     const wpmValues = wpmHistory.map((s) => s.wpm).filter((v) => v > 0);
@@ -588,10 +636,10 @@ export function TypingTest({
       wpm: finalWpm,
       accuracy,
       raw: finalRaw,
-      correctChars,
-      incorrectChars,
-      extraChars,
-      missedChars: 0,
+      correctChars: mtCounts.correctWordChars,
+      incorrectChars: mtCounts.incorrectChars,
+      extraChars: mtCounts.extraChars,
+      missedChars: mtCounts.missedChars,
       consistency,
       elapsedSeconds: Math.round(elapsed),
       mode,
@@ -976,13 +1024,23 @@ export function TypingTest({
       <motion.div
         animate={{ opacity: controlsVisible ? 1 : 0 }}
         transition={{ duration: 0.4 }}
-        className="flex items-center gap-4 text-xs text-muted-foreground"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
       >
         <span>
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">tab</kbd>
           {" + "}
           <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">enter</kbd>
           {" "}- restart test
+        </span>
+        <span>
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">option</kbd>
+          {" + "}
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">⌫</kbd>
+          {" · "}
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">ctrl</kbd>
+          {" + "}
+          <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">⌫</kbd>
+          {" "}- clear whole word (back if empty)
         </span>
       </motion.div>
     </div>

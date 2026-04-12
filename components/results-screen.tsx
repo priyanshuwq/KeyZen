@@ -325,8 +325,14 @@ function CalculationFormulaPopover() {
               <dt className="shrink-0 text-xs font-semibold text-primary sm:w-28">
                 wpm
               </dt>
-              <dd className="min-w-0 font-mono text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-                (correct chars ÷ 5) ÷ minutes
+              <dd className="min-w-0">
+                <p className="font-mono text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+                  ((correct word chars + correct spaces) ÷ 5) ÷ minutes
+                </p>
+                <p className="mt-1.5 text-[10px] leading-snug text-muted-foreground">
+                  spaces between correct words count; in time/zen, a correct
+                  prefix of the last word counts before you press space.
+                </p>
               </dd>
             </div>
             <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:gap-5">

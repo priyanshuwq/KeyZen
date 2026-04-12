@@ -163,10 +163,11 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     </button>
                   </PopoverTrigger>
                   <PopoverContent
-                    className="w-(--radix-popover-trigger-width) gap-0 p-0"
-                    align="start"
-                    side="left"
+                    className="gap-0 p-0"
+                    align="end"
+                    side="bottom"
                     sideOffset={8}
+                    style={{ width: "var(--radix-popover-trigger-width)" }}
                   >
                     <Command shouldFilter={false}>
                       <CommandList>
