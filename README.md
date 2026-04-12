@@ -5,7 +5,7 @@
 
 **KeyZen** is a typing-test website: timed and word-count drills, quotes, and a zen mode, with detailed results (WPM, accuracy, consistency, charts). On large screens you can turn on a **virtual keyboard** that highlights keys as you type, plus **key sounds** and optional **haptics** (supported devices).
 
-**Live repo:** [github.com/shivabhattacharjee/KeyZen](https://github.com/shivabhattacharjee/KeyZen)
+**Live :** [KeyZen](https://keyzen.theshiva.xyz/)
 
 ---
 
