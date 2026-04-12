@@ -303,13 +303,15 @@ function CalculationFormulaPopover() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-2 rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-        >
-          <IconInfoCircle size={16} stroke={1.5} aria-hidden />
-          calculation formula
-        </button>
+        <CornerBrackets className="inline-flex">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-0"
+          >
+            <IconInfoCircle size={16} stroke={1.5} aria-hidden />
+            calculation formula
+          </button>
+        </CornerBrackets>
       </PopoverTrigger>
       <PopoverContent
         side="top"
