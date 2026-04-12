@@ -4,13 +4,18 @@ const punctuationMarks = [".", ",", "!", "?", ";", ":"] as const;
 
 export function generateWords(
   count: number,
-  options?: { punctuation?: boolean },
+  options?: { punctuation?: boolean; numbers?: boolean },
 ): string[] {
   const raw = generate({ exactly: count, minLength: 2, maxLength: 8 }) as string[];
 
-  if (!options?.punctuation) return raw;
-
   return raw.map((word) => {
+    // Optionally replace ~15% of words with a number
+    if (options?.numbers && Math.random() < 0.15) {
+      return String(Math.floor(Math.random() * 10000));
+    }
+
+    if (!options?.punctuation) return word;
+
     const rand = Math.random();
     if (rand < 0.1) {
       return word + punctuationMarks[Math.floor(Math.random() * punctuationMarks.length)];

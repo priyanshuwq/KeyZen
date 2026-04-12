@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useRef } from "react"
+import { motion } from "motion/react"
 import { cn } from "@/lib/utils"
 import { Keyboard } from "@/components/ui/keyboard"
 import { TypingTest } from "@/components/typing-test"
@@ -14,8 +15,29 @@ import { GithubLogo } from "@phosphor-icons/react"
 export default function Page() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [isFinished, setIsFinished] = useState(false)
+  const [isTypingActive, setIsTypingActive] = useState(false)
   const [restartKey, setRestartKey] = useState(0)
   const { showKeyboard, soundEnabled } = useSettings()
+
+  // Header fades while typing; mouse movement restores it briefly
+  const [headerVisible, setHeaderVisible] = useState(true)
+  const headerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleTypingActiveChange = useCallback((active: boolean) => {
+    setIsTypingActive(active)
+    if (!active) {
+      setHeaderVisible(true)
+    } else {
+      setHeaderVisible(false)
+    }
+  }, [])
+
+  const handleHeaderMouseMove = useCallback(() => {
+    if (!isTypingActive) return
+    setHeaderVisible(true)
+    if (headerTimerRef.current) clearTimeout(headerTimerRef.current)
+    headerTimerRef.current = setTimeout(() => setHeaderVisible(false), 2500)
+  }, [isTypingActive])
 
   const handleKeyHighlight = useCallback((_key: string | null) => {}, [])
 
@@ -28,7 +50,12 @@ export default function Page() {
 
   return (
     <div className="flex min-h-dvh w-full flex-col bg-background">
-      <header className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3">
+      <motion.header
+        animate={{ opacity: headerVisible ? 1 : 0.1 }}
+        transition={{ duration: 0.4, ease: "easeInOut" }}
+        onMouseMove={handleHeaderMouseMove}
+        className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3"
+      >
         <div className="flex items-center gap-3">
           <span
             onClick={handleLogoClick}
@@ -56,7 +83,7 @@ export default function Page() {
           </a>
         </Button>
       </CornerBrackets>
-      </header>
+      </motion.header>
 
       <div className="flex flex-1 flex-col">
         {/* Top half: typing test */}
@@ -72,6 +99,7 @@ export default function Page() {
             key={restartKey}
             onKeyHighlight={handleKeyHighlight}
             onFinished={setIsFinished}
+            onTypingActiveChange={handleTypingActiveChange}
             pauseTypingInputRefocus={settingsOpen}
           />
         </main>

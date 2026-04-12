@@ -168,3 +168,9 @@
 .typing-cursor {
   animation: cursor-blink 1s ease-in-out infinite;
 }
+
+/* While actively typing, pause the blink so the cursor is solid */
+.is-typing .typing-cursor {
+  animation-play-state: paused;
+  opacity: 1;
+}
