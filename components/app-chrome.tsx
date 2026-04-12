@@ -17,6 +17,7 @@ import { IconInfoCircle, IconSettings } from "@tabler/icons-react"
 import { GithubLogo } from "@phosphor-icons/react"
 
 import { CornerBrackets } from "@/components/corner-brackets"
+import { DynamicFavicon } from "@/components/dynamic-favicon"
 import { SettingsPanel } from "@/components/settings-panel"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
@@ -56,6 +57,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   return (
     <AppChromeContext.Provider value={value}>
+      <DynamicFavicon />
       <div className="flex min-h-dvh w-full flex-col bg-background">
         <SiteHeader />
         {children}

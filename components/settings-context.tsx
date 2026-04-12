@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { syncKeyZenFavicon } from "@/lib/favicon-client";
+
 export type AccentColor =
   | "teal"
   | "red"
@@ -168,6 +170,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-accent", accent);
     localStorage.setItem("tc-accent", accent);
+    queueMicrotask(() => syncKeyZenFavicon());
   }, [accent]);
 
 

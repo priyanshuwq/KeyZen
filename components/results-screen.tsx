@@ -209,7 +209,6 @@ export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
 
       {/* Actions */}
       <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 pb-2">
-      <CalculationFormulaPopover />
         <button
           onClick={onRestart}
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-muted-foreground transition-colors hover:text-foreground"
@@ -225,6 +224,7 @@ export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
           <IconRefresh size={16} />
           restart
         </button>
+        <CalculationFormulaPopover />
       </div>
     </motion.div>
   );
