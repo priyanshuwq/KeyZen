@@ -1,31 +1,110 @@
 # KeyZen
 
-A keyboard typing test built with [Next.js](https://nextjs.org). Practice in time, word count, quote, or zen modes with optional on-screen keyboard, sound, and live WPM.
+**KeyZen** is a typing-test website: timed and word-count drills, quotes, and a zen mode, with detailed results (WPM, accuracy, consistency, charts). On large screens you can turn on a **virtual keyboard** that highlights keys as you type, plus **key sounds** and optional **haptics** (supported devices).
 
-**Repository:** [github.com/shivabhattacharjee/KeyZen](https://github.com/shivabhattacharjee/KeyZen)
+**Live repo:** [github.com/shivabhattacharjee/KeyZen](https://github.com/shivabhattacharjee/KeyZen)
 
-## Getting started
+---
+
+## Features
+
+| Area | What you get |
+|------|----------------|
+| **Test modes** | Time (e.g. 15s–120s), word count, quotes (length presets), zen |
+| **Results** | WPM, raw speed, accuracy, character breakdown, consistency, elapsed time, WPM-over-time chart |
+| **Virtual keyboard** | Classic layout; mirrors expected keys while typing (**desktop / `lg+` only** in the UI) |
+| **Sound** | Per-key feedback via Web Audio (`public/sounds/sound.ogg`); toggle in Settings |
+| **Haptics** | Optional vibration on supported hardware ([web-haptics](https://www.npmjs.com/package/web-haptics)) |
+| **Settings** | Theme (light / dark / system), accent color, typography (many Google fonts), show keyboard, sound, realtime WPM |
+
+Settings are stored in `localStorage` in the browser.
+
+---
+
+## Prerequisites
+
+- **Node.js** 20+ (LTS recommended)
+- **pnpm** 9+ (used in the commands below)
+
+If you use npm or Yarn, run the equivalent of `install` and the scripts from `package.json`.
+
+---
+
+## Installation
+
+1. **Clone the repository**
+
+   ```bash
+   git clone https://github.com/shivabhattacharjee/KeyZen.git
+   cd KeyZen
+   ```
+
+   If your folder name differs (e.g. `keyboard-typing-test`), `cd` into that directory instead.
+
+2. **Install dependencies**
+
+   ```bash
+   pnpm install
+   ```
+
+   This installs all packages and runs **`postinstall`**, which copies quote text from the `inspirational-quotes` package into:
+
+   `data/quotes.json`
+
+   Quote mode needs that file; if `pnpm install` fails, fix the error first—do not skip install.
+
+3. **Run the development server**
+
+   ```bash
+   pnpm dev
+   ```
+
+4. **Open the site**
+
+   In your browser go to [http://localhost:3000](http://localhost:3000).
+
+---
+
+## Production build
 
 ```bash
-pnpm install
-pnpm dev
+pnpm build
+pnpm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+By default the app listens on port **3000** (`next start`). Use `pnpm start -- -p 4000` (or your host’s process manager) to change the port.
 
-## Scripts
+---
 
-| Command        | Description              |
-| -------------- | ------------------------ |
-| `pnpm dev`     | Dev server (Turbopack)   |
-| `pnpm build`   | Production build         |
-| `pnpm start`   | Run production server    |
-| `pnpm lint`    | ESLint                   |
-| `pnpm typecheck` | TypeScript check       |
-| `pnpm format`  | Prettier (TS/TSX)        |
+## Sound and the browser
 
-`postinstall` copies quote data into `data/quotes.json` for the quote mode.
+Audio uses the **Web Audio API**. Many browsers only unlock audio after a **user gesture** (click, tap, or key press). If sound is enabled in Settings but you hear nothing, interact with the page once (e.g. start typing or click the test area), then try again.
 
-## Stack
+---
 
-Next.js App Router, React, Tailwind CSS, shadcn-style UI (Radix, cmdk), Motion, Recharts.
+## Project scripts
+
+| Command | Description |
+|--------|-------------|
+| `pnpm dev` | Development server (Turbopack) |
+| `pnpm build` | Optimized production build |
+| `pnpm start` | Serve the production build |
+| `pnpm lint` | Run ESLint |
+| `pnpm typecheck` | Run TypeScript (`tsc --noEmit`) |
+| `pnpm format` | Format TS/TSX with Prettier |
+
+---
+
+## Tech stack
+
+- [Next.js](https://nextjs.org) (App Router), React 19, TypeScript  
+- Styling: Tailwind CSS, shadcn-style UI (Radix primitives, cmdk)  
+- Charts: Recharts  
+- Motion: [Motion](https://motion.dev)  
+- Words / quotes: `random-words`, `inspirational-quotes` (data copied on install)
+
+---
+
+## Contributing
+
+Issues and pull requests are welcome on [GitHub](https://github.com/shivabhattacharjee/KeyZen).
