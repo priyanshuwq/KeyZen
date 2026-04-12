@@ -18,7 +18,7 @@ const fontMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "KeyZen — Typing Speed Test",
   description:
-    "Measure and improve your typing speed and accuracy with Typecraft. A clean, minimal typing test with time and word modes, punctuation support, and real-time WPM tracking.",
+    "Measure and improve your typing speed and accuracy with KeyZen. A clean typing test with time and word modes, quotes, optional on-screen keyboard and sound, and real-time WPM tracking.",
   keywords: [
     "typing test",
     "typing speed",
@@ -40,6 +40,14 @@ export const metadata: Metadata = {
     description:
       "Measure and improve your typing speed with a clean, distraction-free typing test. Real-time WPM, accuracy tracking, time and word modes.",
     siteName: "KeyZen",
+    images: [
+      {
+        url: "/opengraph.png",
+        width: 1440,
+        height: 1080,
+        alt: "KeyZen — typing practice with on-screen keyboard",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -47,6 +55,7 @@ export const metadata: Metadata = {
     description:
       "A clean, minimal typing test. Track your WPM and accuracy in real-time.",
     creator: "@KeyZen",
+    images: ["/opengraph.png"],
   },
   robots: {
     index: true,
