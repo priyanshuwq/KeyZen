@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion, LayoutGroup } from "motion/react";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { IconPointer, IconRefresh } from "@tabler/icons-react";
 import { ResultsScreen } from "@/components/results-screen";
 import { TestControls } from "@/components/test-controls";
@@ -19,7 +19,18 @@ interface TypingTestProps {
 }
 
 export function TypingTest(props: TypingTestProps) {
-  const { realtimeWpm } = useSettings();
+  const { realtimeWpm, faahMode } = useSettings();
+  const faahAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const onWrongKey = useCallback(() => {
+    if (!faahMode) return;
+    if (!faahAudioRef.current) {
+      faahAudioRef.current = new Audio("/sounds/fahhhhh.mp3");
+    }
+    faahAudioRef.current.currentTime = 0;
+    void faahAudioRef.current.play();
+  }, [faahMode]);
+
   const {
     mode, timeOption, wordOption, quoteLength,
     punctuation, numbers, difficulty,
@@ -32,7 +43,7 @@ export function TypingTest(props: TypingTestProps) {
     handleMouseMove, handleResultsRestart, handleResultsNext,
     onModeChange, onTimeOptionChange, onWordOptionChange, onQuoteLengthChange,
     onPunctuationToggle, onNumbersToggle, onDifficultyToggle, onRestart,
-  } = useTypingTest(props);
+  } = useTypingTest({ ...props, onWrongKey });
 
   if (showResults) {
     return (

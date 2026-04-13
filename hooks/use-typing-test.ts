@@ -29,6 +29,7 @@ interface UseTypingTestProps {
   onFinished?: (finished: boolean) => void;
   onTypingActiveChange?: (active: boolean) => void;
   onFocusChange?: (focused: boolean) => void;
+  onWrongKey?: () => void;
   pauseTypingInputRefocus?: boolean;
 }
 
@@ -37,6 +38,7 @@ export function useTypingTest({
   onFinished,
   onTypingActiveChange,
   onFocusChange,
+  onWrongKey,
   pauseTypingInputRefocus = false,
 }: UseTypingTestProps) {
   const pauseRefocusRef = useRef(false);
@@ -381,6 +383,10 @@ export function useTypingTest({
         const nextTyped = typed + e.key;
         setTyped(nextTyped);
 
+        const charIndex = typed.length;
+        const isWrong = charIndex >= currentWord.length || e.key !== currentWord[charIndex];
+        if (isWrong) onWrongKey?.();
+
         const isLastWord = wordIndex + 1 >= words.length;
         if (isLastWord && nextTyped.length >= currentWord.length && mode !== "time" && mode !== "zen") {
           for (let i = 0; i < Math.min(nextTyped.length, currentWord.length); i++) {
@@ -401,7 +407,7 @@ export function useTypingTest({
     [
       finished, started, words, wordIndex, typed, wordInputs,
       mode, timeOption, resetTest, finishTest, onKeyHighlight,
-      recordWordSnapshot, markTypingActive, onTypingActiveChange, clearWordOrNavigateBack,
+      recordWordSnapshot, markTypingActive, onTypingActiveChange, onWrongKey, clearWordOrNavigateBack,
     ],
   );
 
