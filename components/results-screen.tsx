@@ -2,7 +2,7 @@
 
 import { useMemo, type ReactNode } from "react";
 import { motion } from "motion/react";
-import { IconInfoCircle, IconRefresh, IconArrowRight } from "@tabler/icons-react";
+import { IconInfoCircle, IconRefresh, IconArrowRight, IconDownload } from "@tabler/icons-react";
 import {
   LineChart,
   Line,
@@ -293,9 +293,64 @@ export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
           label="restart"
           icon={<IconRefresh size={16} aria-hidden />}
         />
+        <DownloadResultsPopover stats={stats} />
         <CalculationFormulaPopover />
       </div>
     </motion.div>
+  );
+}
+
+function DownloadResultsPopover({ stats }: { stats: ResultStats }) {
+  const downloadJson = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(stats, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `typing-test-${new Date().toISOString()}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+  };
+
+  const downloadCsv = () => {
+    const headers = ["second", "wpm", "raw", "errors"];
+    const rows = stats.wpmHistory.map(row =>
+      headers.map(header => row[header as keyof WpmSnapshot] ?? 0).join(",")
+    );
+    const csv = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `typing-test-${new Date().toISOString()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <CornerBrackets className="inline-flex">
+          <button
+            type="button"
+            className="flex items-center gap-2 px-4 py-2 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-0"
+          >
+            <IconDownload size={16} stroke={1.5} aria-hidden />
+            download
+          </button>
+        </CornerBrackets>
+      </PopoverTrigger>
+      <PopoverContent
+        side="top"
+        align="center"
+        sideOffset={8}
+        className="w-36 p-1"
+      >
+        <div className="flex flex-col gap-1">
+          <button onClick={downloadJson} className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted text-foreground transition-colors">JSON format</button>
+          <button onClick={downloadCsv} className="w-full rounded-md px-2 py-1.5 text-left text-xs hover:bg-muted text-foreground transition-colors">CSV format</button>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
