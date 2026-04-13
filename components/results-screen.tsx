@@ -3,6 +3,7 @@
 import { useMemo, useEffect, useRef, useState, type ReactNode } from "react";
 import { Confetti, type ConfettiRef } from "@/components/ui/confetti";
 import { isInvalidTestResult } from "@/lib/validate-result";
+import { saveIfPersonalBest } from "@/lib/personal-best";
 import { motion } from "motion/react";
 import { IconInfoCircle, IconRefresh, IconArrowRight, IconDownload } from "@tabler/icons-react";
 import {
@@ -213,6 +214,12 @@ export function ResultsScreen({ stats, onRestart, onNext }: ResultsScreenProps) 
   const confettiRef = useRef<ConfettiRef>(null)
   const invalid = isInvalidTestResult(stats)
 
+  const pb = useMemo(
+    () => invalid ? null : saveIfPersonalBest(mode, modeDetail, wpm, accuracy),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+
   useEffect(() => {
     if (!invalid && wpm >= 100) {
       const timer = setTimeout(() => {
@@ -286,6 +293,16 @@ export function ResultsScreen({ stats, onRestart, onNext }: ResultsScreenProps) 
         <div className="flex w-full flex-col gap-1 pt-2 md:w-36 md:shrink-0">
           <StatBig label="wpm" value={wpm} />
           <StatBig label="acc" value={`${accuracy}%`} />
+          {pb?.isNewPb && (
+            <span className="text-xs font-medium text-primary animate-in fade-in">
+              new personal best
+            </span>
+          )}
+          {pb && !pb.isNewPb && pb.previous && (
+            <span className="text-[10px] text-muted-foreground">
+              pb: {pb.previous.wpm} wpm
+            </span>
+          )}
           <div className="mt-4 flex flex-col gap-0.5 text-xs text-muted-foreground">
             <span className="text-[10px] uppercase tracking-widest opacity-50">
               test type
