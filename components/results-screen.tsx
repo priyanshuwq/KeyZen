@@ -1,6 +1,8 @@
 "use client";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useEffect, useRef, type ReactNode } from "react";
+import { Confetti, type ConfettiRef } from "@/components/ui/confetti";
+import { isInvalidTestResult } from "@/lib/validate-result";
 import { motion } from "motion/react";
 import { IconInfoCircle, IconRefresh, IconArrowRight, IconDownload } from "@tabler/icons-react";
 import {
@@ -168,14 +170,6 @@ function WpmChart({ history }: { history: WpmSnapshot[] }) {
   );
 }
 
-function isInvalidTestResult(stats: ResultStats): boolean {
-  const keystrokes =
-    stats.correctChars + stats.incorrectChars + stats.extraChars
-  if (keystrokes === 0) return true
-  if (!Number.isFinite(stats.wpm) || !Number.isFinite(stats.raw)) return true
-  if (!Number.isFinite(stats.accuracy)) return true
-  return false
-}
 
 export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
   const {
@@ -193,7 +187,21 @@ export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
     wpmHistory,
   } = stats
 
+  const confettiRef = useRef<ConfettiRef>(null)
   const invalid = isInvalidTestResult(stats)
+
+  useEffect(() => {
+    if (!invalid && wpm >= 100) {
+      const timer = setTimeout(() => {
+        confettiRef.current?.fire({
+          particleCount: 150,
+          spread: 80,
+          origin: { y: 0.4 },
+        })
+      }, 400)
+      return () => clearTimeout(timer)
+    }
+  }, [invalid, wpm])
 
   if (invalid) {
     return (
@@ -201,7 +209,7 @@ export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="flex w-full flex-col gap-8"
+        className="flex w-full flex-col gap-8 md:max-w-6xl md:mx-auto"
       >
         <div className="flex flex-col items-center gap-3 px-2 text-center">
           <p className="font-(family-name:--font-doto) text-3xl font-bold text-muted-foreground md:text-4xl">
@@ -239,8 +247,15 @@ export function ResultsScreen({ stats, onRestart }: ResultsScreenProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="flex w-full flex-col gap-6"
+      className="flex w-full flex-col gap-6 md:max-w-6xl md:mx-auto mt-12 md:mt-0"
     >
+      {wpm >= 100 && (
+        <Confetti
+          ref={confettiRef}
+          manualstart
+          className="pointer-events-none fixed inset-0 z-50 size-full"
+        />
+      )}
       {/* Main block: column on mobile, row from md */}
       <div className="flex flex-col gap-6 md:flex-row md:items-start md:gap-10">
         {/* WPM + ACC + test type */}

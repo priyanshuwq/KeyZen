@@ -116,8 +116,9 @@ function SiteHeader() {
       animate={{ opacity: dimHeader ? (headerVisible ? 1 : 0.1) : 1 }}
       transition={{ duration: 0.4, ease: "easeInOut" }}
       onMouseMove={handleHeaderMouseMove}
-      className="flex shrink-0 items-center justify-between border-b border-border px-6 py-3"
+      className="flex shrink-0 justify-center border-b border-border px-6 py-3"
     >
+      <div className="flex w-full max-w-6xl items-center justify-between">
       <div className="flex items-center gap-3">
         {isHome ? (
           <button
@@ -171,6 +172,7 @@ function SiteHeader() {
           </a>
         </Button>
       </CornerBrackets>
+      </div>
     </motion.header>
   )
 }
