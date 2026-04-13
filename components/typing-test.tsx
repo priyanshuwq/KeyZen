@@ -47,7 +47,7 @@ export function TypingTest(props: TypingTestProps) {
 
   return (
     <div
-      className="flex w-full flex-col max-w-6xl items-center gap-3 transition-all duration-150 ease-out"
+      className="flex w-full flex-col max-w-5xl items-center gap-3 transition-all duration-150 ease-out"
       style={{ opacity: screenFade, filter: screenFade < 1 ? "blur(4px)" : "none" }}
       onClick={handleFocus}
       onMouseMove={handleMouseMove}

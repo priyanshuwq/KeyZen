@@ -118,7 +118,7 @@ function SiteHeader() {
       onMouseMove={handleHeaderMouseMove}
       className="flex shrink-0 justify-center border-b border-border px-6 py-3"
     >
-      <div className="flex w-full max-w-6xl items-center justify-between">
+      <div className="flex w-full max-w-5xl items-center justify-between">
       <div className="flex items-center gap-3">
         {isHome ? (
           <button
