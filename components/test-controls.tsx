@@ -3,7 +3,7 @@
 import { motion } from "motion/react";
 import {
   IconAt, IconClock, IconLetterA, IconQuote,
-  IconMountain, IconNumber, IconFeather, IconFlame, IconRefresh,
+  IconMountain, IconNumber, IconFeather, IconFlame,
 } from "@tabler/icons-react";
 import type { QuoteLength } from "@/lib/quotes";
 import type { Difficulty } from "@/lib/words";
@@ -55,7 +55,7 @@ export function TestControls({
       )}
     >
       {/* Toggles: punctuation / numbers / difficulty */}
-      <div className="flex flex-row flex-wrap items-center justify-center gap-2">
+      <div className="flex flex-row flex-wrap items-center justify-center gap-1 rounded-lg p-1 bg-zinc-100 dark:bg-zinc-800">
         <button type="button" onClick={onPunctuationToggle} className={btnClass(punctuation)}>
           <IconAt size={14} />
           punctuation
@@ -94,62 +94,41 @@ export function TestControls({
         </TabsList>
       </Tabs>
 
-      <div className="hidden h-4 w-px bg-border sm:mx-1 sm:block" />
+      {mode !== "zen" && (
+        <>
+          <div className="hidden h-4 w-px bg-border sm:mx-1 sm:block" />
 
-      {/* Count / quote-length / time tabs */}
-      {mode === "words" ? (
-        <Tabs value={String(wordOption)} onValueChange={(v) => onWordOptionChange(Number(v) as WordOption)} className="flex items-center">
-          <TabsList>
-            {[10, 25, 50, 100].map((w) => (
-              <TabsTrigger key={w} value={String(w)} className="px-3 text-xs">{w}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      ) : mode === "quote" ? (
-        <Tabs value={quoteLength} onValueChange={(v) => onQuoteLengthChange(v as QuoteLength)} className="flex items-center">
-          <TabsList>
-            {(["short", "medium", "long"] as QuoteLength[]).map((q) => (
-              <TabsTrigger key={q} value={q} className="px-3 text-xs">{q}</TabsTrigger>
-            ))}
-          </TabsList>
-        </Tabs>
-      ) : (
-        <Tabs value={String(timeOption)} onValueChange={(v) => { if (mode === "time") onTimeOptionChange(Number(v) as TimeOption); }} className="flex items-center">
-          <TooltipProvider>
-            <TabsList>
-              {[15, 30, 60, 120].map((t) => {
-                const isDisabled = mode !== "time";
-                const trigger = (
-                  <TabsTrigger key={t} value={String(t)} disabled={isDisabled} className="px-3 text-xs">
-                    {t}
-                  </TabsTrigger>
-                );
-                if (!isDisabled) return trigger;
-                return (
-                  <Tooltip key={t}>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex cursor-not-allowed">{trigger}</span>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom">only available in time mode</TooltipContent>
-                  </Tooltip>
-                );
-              })}
-            </TabsList>
-          </TooltipProvider>
-        </Tabs>
+          {/* Count / quote-length / time tabs */}
+          {mode === "words" ? (
+            <Tabs value={String(wordOption)} onValueChange={(v) => onWordOptionChange(Number(v) as WordOption)} className="flex items-center">
+              <TabsList>
+                {[10, 25, 50, 100].map((w) => (
+                  <TabsTrigger key={w} value={String(w)} className="px-3 text-xs">{w}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          ) : mode === "quote" ? (
+            <Tabs value={quoteLength} onValueChange={(v) => onQuoteLengthChange(v as QuoteLength)} className="flex items-center">
+              <TabsList>
+                {(["short", "medium", "long"] as QuoteLength[]).map((q) => (
+                  <TabsTrigger key={q} value={q} className="px-3 text-xs">{q}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          ) : (
+            <Tabs value={String(timeOption)} onValueChange={(v) => onTimeOptionChange(Number(v) as TimeOption)} className="flex items-center">
+              <TabsList>
+                {[15, 30, 60, 120].map((t) => (
+                  <TabsTrigger key={t} value={String(t)} className="px-3 text-xs">{t}</TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          )}
+
+          <div className="hidden h-4 w-px bg-border sm:mx-1 sm:block" />
+        </>
       )}
 
-      <div className="hidden h-4 w-px bg-border sm:mx-1 sm:block" />
-
-      {/* Restart */}
-      <button
-        type="button"
-        onClick={onRestart}
-        className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:text-foreground"
-        title="Restart test"
-      >
-        <IconRefresh size={16} />
-      </button>
     </motion.div>
   );
 }

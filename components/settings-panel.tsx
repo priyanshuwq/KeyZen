@@ -13,6 +13,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface SettingsPanelProps {
@@ -102,20 +103,25 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   onMouseUp={onMouseUp}
                   onMouseLeave={onMouseUp}
                 >
-                  {ACCENT_COLORS.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => setAccent(c.id)}
-                      title={c.label}
-                      className={cn(
-                        "h-7 w-12 shrink-0 rounded-sm transition-all duration-150",
-                        accent === c.id
-                          ? "opacity-100"
-                          : "opacity-40 hover:opacity-80",
-                      )}
-                      style={{ background: c.swatch }}
-                    />
-                  ))}
+                  <TooltipProvider delayDuration={300}>
+                    {ACCENT_COLORS.map((c) => (
+                      <Tooltip key={c.id}>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => setAccent(c.id)}
+                            className={cn(
+                              "h-7 w-12 shrink-0 rounded-sm transition-all duration-150",
+                              accent === c.id
+                                ? "opacity-100"
+                                : "opacity-40 hover:opacity-80",
+                            )}
+                            style={{ background: c.swatch }}
+                          />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">{c.label}</TooltipContent>
+                      </Tooltip>
+                    ))}
+                  </TooltipProvider>
                 </div>
               </section>
 

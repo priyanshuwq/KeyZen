@@ -17,7 +17,19 @@ export type AccentColor =
   | "purple"
   | "green"
   | "rose"
-  | "blue";
+  | "blue"
+  | "orange"
+  | "cyan"
+  | "pink"
+  | "indigo"
+  | "lime"
+  | "violet"
+  | "lightgreen"
+  | "sky"
+  | "coral"
+  | "mint"
+  | "gold"
+  | "lavender";
 
 export type TypingFont =
   // Mono
@@ -117,6 +129,18 @@ export const ACCENT_COLORS: { id: AccentColor; label: string; swatch: string }[]
     { id: "green", label: "Green", swatch: "oklch(0.58 0.17 145)" },
     { id: "rose", label: "Rose", swatch: "oklch(0.6 0.2 355)" },
     { id: "blue", label: "Blue", swatch: "oklch(0.55 0.2 255)" },
+    { id: "orange", label: "Orange", swatch: "oklch(0.68 0.2 50)" },
+    { id: "cyan", label: "Cyan", swatch: "oklch(0.6 0.14 220)" },
+    { id: "pink", label: "Pink", swatch: "oklch(0.62 0.22 330)" },
+    { id: "indigo", label: "Indigo", swatch: "oklch(0.55 0.22 270)" },
+    { id: "lime", label: "Lime", swatch: "oklch(0.72 0.2 125)" },
+    { id: "violet", label: "Violet", swatch: "oklch(0.58 0.25 308)" },
+    { id: "lightgreen", label: "Light Green", swatch: "oklch(0.72 0.18 155)" },
+    { id: "sky", label: "Sky", swatch: "oklch(0.62 0.16 235)" },
+    { id: "coral", label: "Coral", swatch: "oklch(0.65 0.2 35)" },
+    { id: "mint", label: "Mint", swatch: "oklch(0.72 0.13 175)" },
+    { id: "gold", label: "Gold", swatch: "oklch(0.75 0.17 90)" },
+    { id: "lavender", label: "Lavender", swatch: "oklch(0.65 0.16 285)" },
   ];
 
 interface SettingsContextType {
