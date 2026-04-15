@@ -159,6 +159,8 @@ interface SettingsContextType {
   setFaahMode: (v: boolean) => void;
   ghostMode: boolean;
   setGhostMode: (v: boolean) => void;
+  language: string;
+  setLanguage: (l: string) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -193,6 +195,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [realtimeWpm, setRealtimeWpmState] = useState(false);
   const [faahMode, setFaahModeState] = useState(false);
   const [ghostMode, setGhostModeState] = useState(false);
+  const [language, setLanguageState] = useState("english");
 
   // Rule 4: one-time hydration from localStorage on mount, applying DOM side
   // effects inline here instead of in separate reactive useEffects.
@@ -218,6 +221,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     if (savedRealtimeWpm !== null) setRealtimeWpmState(savedRealtimeWpm === "true");
     if (savedFaahMode !== null) setFaahModeState(savedFaahMode === "true");
     if (savedGhostMode !== null) setGhostModeState(savedGhostMode === "true");
+
+    const savedLanguage = localStorage.getItem("tc-language");
+    if (savedLanguage) setLanguageState(savedLanguage);
   });
 
   // Rule 3: setAccent / setFont are event handlers that apply DOM changes
@@ -259,6 +265,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("tc-ghost-mode", String(v));
   };
 
+  const setLanguage = (l: string) => {
+    setLanguageState(l);
+    localStorage.setItem("tc-language", l);
+  };
+
   const fontCssFamily =
     FONT_OPTIONS.find((f) => f.id === font)?.cssFamily ?? "var(--font-mono)";
 
@@ -272,6 +283,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         realtimeWpm, setRealtimeWpm,
         faahMode, setFaahMode,
         ghostMode, setGhostMode,
+        language, setLanguage,
       }}
     >
       {children}

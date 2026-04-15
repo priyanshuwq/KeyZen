@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { IconX } from "@tabler/icons-react";
 import { CaretDownIcon } from "@phosphor-icons/react";
 import { motion, AnimatePresence } from "motion/react";
@@ -15,6 +15,8 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import type { Language } from "@/lib/languages";
+import { getLanguageManifest } from "@/lib/languages";
 
 interface SettingsPanelProps {
   open: boolean;
@@ -22,9 +24,18 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { accent, setAccent, font, setFont, showKeyboard, setShowKeyboard, soundEnabled, setSoundEnabled, realtimeWpm, setRealtimeWpm, faahMode, setFaahMode, ghostMode, setGhostMode } = useSettings();
+  const { accent, setAccent, font, setFont, showKeyboard, setShowKeyboard, soundEnabled, setSoundEnabled, realtimeWpm, setRealtimeWpm, faahMode, setFaahMode, ghostMode, setGhostMode, language, setLanguage } = useSettings();
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
+  const [langPickerOpen, setLangPickerOpen] = useState(false);
+  const [languages, setLanguages] = useState<Language[]>([]);
   const selectedFont = FONT_OPTIONS.find((f) => f.id === font);
+  const selectedLang = languages.find((l) => l.code === language);
+
+  useEffect(() => {
+    if (open && languages.length === 0) {
+      getLanguageManifest().then(setLanguages);
+    }
+  }, [open, languages.length]);
 
   // Drag-to-scroll for color swatches
   const swatchRef = useRef<HTMLDivElement>(null);
@@ -214,6 +225,55 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                               }}
                             >
                               <span style={{ fontFamily: f.cssFamily }}>{f.label}</span>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </section>
+
+              <section>
+                <SectionLabel>Language</SectionLabel>
+                <Popover open={langPickerOpen} onOpenChange={setLangPickerOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      aria-expanded={langPickerOpen}
+                      className={cn(
+                        "mt-3 flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-xs outline-none transition-colors",
+                        "hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                      )}
+                    >
+                      <span className="min-w-0 truncate">
+                        {selectedLang?.name ?? language}
+                      </span>
+                      <CaretDownIcon className="size-4 shrink-0 text-muted-foreground" weight="bold" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="gap-0 p-0"
+                    align="end"
+                    side="bottom"
+                    sideOffset={8}
+                    style={{ width: "var(--radix-popover-trigger-width)" }}
+                  >
+                    <Command>
+                      <CommandList>
+                        <CommandGroup>
+                          {languages.map((l) => (
+                            <CommandItem
+                              key={l.code}
+                              value={l.code}
+                              keywords={[l.name]}
+                              data-checked={language === l.code ? true : undefined}
+                              onSelect={() => {
+                                setLanguage(l.code);
+                                setLangPickerOpen(false);
+                              }}
+                            >
+                              {l.name}
                             </CommandItem>
                           ))}
                         </CommandGroup>

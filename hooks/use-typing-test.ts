@@ -1,9 +1,11 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMountEffect } from "@/hooks/use-mount-effect";
-import { generateWords, type Difficulty } from "@/lib/words";
+import { generateWords, generateWordsFromPool, type Difficulty } from "@/lib/words";
 import { getQuote, type QuoteLength } from "@/lib/quotes";
+import { fetchLanguageWords } from "@/lib/languages";
+import { useSettings } from "@/components/settings-context";
 import {
   accuracyFromCounts,
   countWpm,
@@ -21,7 +23,7 @@ import {
 type ResetOverrides = Partial<{
   mode: TestMode; quoteLength: QuoteLength; wordOption: WordOption;
   timeOption: TimeOption; punctuation: boolean; numbers: boolean;
-  difficulty: Difficulty | undefined;
+  difficulty: Difficulty | undefined; language: string;
 }>;
 
 interface UseTypingTestProps {
@@ -41,6 +43,8 @@ export function useTypingTest({
   onWrongKey,
   pauseTypingInputRefocus = false,
 }: UseTypingTestProps) {
+  const { language } = useSettings();
+
   const pauseRefocusRef = useRef(false);
   pauseRefocusRef.current = pauseTypingInputRefocus;
 
@@ -53,6 +57,9 @@ export function useTypingTest({
   const [punctuation, setPunctuation] = useState(false);
   const [numbers, setNumbers] = useState(false);
   const [difficulty, setDifficulty] = useState<Difficulty | undefined>("easy");
+
+  // Language word pool cache (kept in a ref so it survives re-renders)
+  const langPoolRef = useRef<{ code: string; hard: boolean; words: string[] } | null>(null);
 
   // ── Test state ───────────────────────────────────────────────────────────
   const [words, setWords] = useState<string[]>([]);
@@ -117,10 +124,28 @@ export function useTypingTest({
 
   finishTestRef.current = finishTest;
 
+  // ── buildWords: generate words from language pool or fallback ─────────
+  const buildWords = useCallback(async (
+    lang: string, count: number, opts: { punctuation: boolean; numbers: boolean; difficulty: Difficulty | undefined },
+  ): Promise<string[]> => {
+    const isHard = opts.difficulty === "hard";
+    // Use cached pool if same language + difficulty tier
+    if (langPoolRef.current && langPoolRef.current.code === lang && langPoolRef.current.hard === isHard) {
+      return generateWordsFromPool(langPoolRef.current.words, count, opts);
+    }
+    const pool = await fetchLanguageWords(lang, isHard);
+    if (pool.length > 0) {
+      langPoolRef.current = { code: lang, hard: isHard, words: pool };
+      return generateWordsFromPool(pool, count, opts);
+    }
+    // Fallback to random-words for English if fetch fails
+    return generateWords(count, opts);
+  }, []);
+
   // ── resetTestWith ────────────────────────────────────────────────────────
   // Rule 3: accepts explicit overrides so option-change handlers can reset
   // immediately with the new value without waiting for state to commit.
-  const resetTestWith = useCallback((overrides: ResetOverrides = {}) => {
+  const resetTestWith = useCallback(async (overrides: ResetOverrides = {}) => {
     const m = overrides.mode ?? mode;
     const ql = overrides.quoteLength ?? quoteLength;
     const wo = overrides.wordOption ?? wordOption;
@@ -128,6 +153,7 @@ export function useTypingTest({
     const p = overrides.punctuation ?? punctuation;
     const n = overrides.numbers ?? numbers;
     const d = "difficulty" in overrides ? overrides.difficulty : difficulty;
+    const lang = overrides.language ?? language;
     const wc = m === "time" ? 200 : m === "words" ? wo : 100;
 
     setQuoteAuthor(null);
@@ -136,7 +162,8 @@ export function useTypingTest({
       setWords(newWords);
       setQuoteAuthor(author);
     } else {
-      setWords(generateWords(wc, { punctuation: p, numbers: n, difficulty: d }));
+      const newWords = await buildWords(lang, wc, { punctuation: p, numbers: n, difficulty: d });
+      setWords(newWords);
     }
     setTyped("");
     setWordIndex(0);
@@ -158,7 +185,7 @@ export function useTypingTest({
     onFinished?.(false);
     onTypingActiveChange?.(false);
     inputRef.current?.focus();
-  }, [mode, quoteLength, wordOption, timeOption, punctuation, numbers, difficulty, onFinished, onTypingActiveChange]);
+  }, [mode, quoteLength, wordOption, timeOption, punctuation, numbers, difficulty, language, buildWords, onFinished, onTypingActiveChange]);
 
   const resetTestImmediate = useCallback(() => resetTestWith(), [resetTestWith]);
 
@@ -166,9 +193,10 @@ export function useTypingTest({
     if (resetAnimRef.current) clearTimeout(resetAnimRef.current);
     setResetting(true);
     resetAnimRef.current = setTimeout(() => {
-      resetTestWith(overrides);
-      setResetting(false);
-      resetAnimRef.current = null;
+      void resetTestWith(overrides).then(() => {
+        setResetting(false);
+        resetAnimRef.current = null;
+      });
     }, 150);
   }, [resetTestWith]);
 
@@ -190,6 +218,7 @@ export function useTypingTest({
     const p = storedPunctuation ?? punctuation;
     const n = storedNumbers ?? numbers;
     const d = storedDifficulty !== undefined ? storedDifficulty : difficulty;
+    const lang = language;
 
     if (storedMode !== undefined) setMode(storedMode);
     if (storedTime !== undefined) setTimeOption(storedTime);
@@ -205,11 +234,21 @@ export function useTypingTest({
       setWords(initWords);
       setQuoteAuthor(author);
     } else {
-      setWords(generateWords(wc, { punctuation: p, numbers: n, difficulty: d }));
+      buildWords(lang, wc, { punctuation: p, numbers: n, difficulty: d }).then((w) => setWords(w));
     }
     if (m === "time") setTimeLeft(to);
     inputRef.current?.focus();
   });
+
+  // ── React to language changes from settings context ──────────────────────
+  const prevLangRef = useRef(language);
+  useEffect(() => {
+    if (prevLangRef.current !== language) {
+      prevLangRef.current = language;
+      langPoolRef.current = null; // invalidate cache
+      void resetTestWith({ language });
+    }
+  }, [language, resetTestWith]);
 
   // ── Helper callbacks ─────────────────────────────────────────────────────
   const markTypingActive = useCallback(() => {
@@ -506,9 +545,10 @@ export function useTypingTest({
     setScreenFade(0);
     if (screenFadeRef.current) clearTimeout(screenFadeRef.current);
     screenFadeRef.current = setTimeout(() => {
-      resetTestImmediate();
-      requestAnimationFrame(() => setScreenFade(1));
-      screenFadeRef.current = null;
+      void resetTestImmediate().then(() => {
+        requestAnimationFrame(() => setScreenFade(1));
+        screenFadeRef.current = null;
+      });
     }, 150);
   }, [resetTestImmediate]);
 
@@ -558,6 +598,7 @@ export function useTypingTest({
     else localStorage.removeItem(DIFFICULTY_STORAGE_KEY);
     resetTest({ difficulty: next });
   }, [difficulty, resetTest]);
+
 
   const controlsVisible = !started || showControls;
   const showResults = finished && frozenStatsRef.current;
