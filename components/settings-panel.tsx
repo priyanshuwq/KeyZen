@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { Language } from "@/lib/languages";
-import { getLanguageManifest } from "@/lib/languages";
+import { getLanguageManifest, isRTLLanguage } from "@/lib/languages";
 
 interface SettingsPanelProps {
   open: boolean;
@@ -24,7 +24,8 @@ interface SettingsPanelProps {
 }
 
 export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
-  const { accent, setAccent, font, setFont, showKeyboard, setShowKeyboard, soundEnabled, setSoundEnabled, realtimeWpm, setRealtimeWpm, faahMode, setFaahMode, ghostMode, setGhostMode, language, setLanguage } = useSettings();
+  const { accent, setAccent, font, setFont, showKeyboard, setShowKeyboard, soundEnabled, setSoundEnabled, realtimeWpm, setRealtimeWpm, faahMode, setFaahMode, ghostMode, setGhostMode, language, setLanguage, showDiacritics, setShowDiacritics } = useSettings();
+  const isRTL = isRTLLanguage(language);
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [langPickerOpen, setLangPickerOpen] = useState(false);
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -165,6 +166,13 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                   enabled={ghostMode}
                   onToggle={() => setGhostMode(!ghostMode)}
                 />
+                {isRTL && (
+                  <ToggleRow
+                    label="Diacritics"
+                    enabled={showDiacritics}
+                    onToggle={() => setShowDiacritics(!showDiacritics)}
+                  />
+                )}
               </section>
 
 

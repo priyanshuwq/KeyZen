@@ -4,6 +4,20 @@ export interface Language {
   has1k: boolean;
 }
 
+const RTL_LANGUAGE_CODES = new Set(["arabic", "urdu", "persian", "hebrew"]);
+
+export function isRTLLanguage(code: string): boolean {
+  return RTL_LANGUAGE_CODES.has(code);
+}
+
+/** Strip Arabic diacritics (harakat/tashkeel) from a string. */
+export function stripArabicDiacritics(text: string): string {
+  // U+0610–U+061A: Arabic extended marks
+  // U+064B–U+065F: Arabic diacritics (fathatan … kasra below)
+  // U+0670: Arabic letter superscript alef (alef waslah)
+  return text.replace(/[\u0610-\u061A\u064B-\u065F\u0670]/g, "");
+}
+
 let manifestCache: Language[] | null = null;
 
 export async function getLanguageManifest(): Promise<Language[]> {

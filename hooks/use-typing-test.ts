@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMountEffect } from "@/hooks/use-mount-effect";
 import { generateWords, generateWordsFromPool, type Difficulty } from "@/lib/words";
 import { getQuote, type QuoteLength } from "@/lib/quotes";
-import { fetchLanguageWords } from "@/lib/languages";
+import { fetchLanguageWords, isRTLLanguage, stripArabicDiacritics } from "@/lib/languages";
 import { useSettings } from "@/components/settings-context";
 import {
   accuracyFromCounts,
@@ -23,7 +23,7 @@ import {
 type ResetOverrides = Partial<{
   mode: TestMode; quoteLength: QuoteLength; wordOption: WordOption;
   timeOption: TimeOption; punctuation: boolean; numbers: boolean;
-  difficulty: Difficulty | undefined; language: string;
+  difficulty: Difficulty | undefined; language: string; showDiacritics: boolean;
 }>;
 
 interface UseTypingTestProps {
@@ -43,7 +43,8 @@ export function useTypingTest({
   onWrongKey,
   pauseTypingInputRefocus = false,
 }: UseTypingTestProps) {
-  const { language } = useSettings();
+  const { language, showDiacritics } = useSettings();
+  const isRTL = isRTLLanguage(language);
 
   const pauseRefocusRef = useRef(false);
   pauseRefocusRef.current = pauseTypingInputRefocus;
@@ -126,17 +127,23 @@ export function useTypingTest({
 
   // ── buildWords: generate words from language pool or fallback ─────────
   const buildWords = useCallback(async (
-    lang: string, count: number, opts: { punctuation: boolean; numbers: boolean; difficulty: Difficulty | undefined },
+    lang: string, count: number, opts: { punctuation: boolean; numbers: boolean; difficulty: Difficulty | undefined; showDiacritics?: boolean },
   ): Promise<string[]> => {
     const isHard = opts.difficulty === "hard";
     // Use cached pool if same language + difficulty tier
     if (langPoolRef.current && langPoolRef.current.code === lang && langPoolRef.current.hard === isHard) {
-      return generateWordsFromPool(langPoolRef.current.words, count, opts);
+      const result = generateWordsFromPool(langPoolRef.current.words, count, opts);
+      return (opts.showDiacritics === false && isRTLLanguage(lang))
+        ? result.map(stripArabicDiacritics)
+        : result;
     }
     const pool = await fetchLanguageWords(lang, isHard);
     if (pool.length > 0) {
       langPoolRef.current = { code: lang, hard: isHard, words: pool };
-      return generateWordsFromPool(pool, count, opts);
+      const result = generateWordsFromPool(pool, count, opts);
+      return (opts.showDiacritics === false && isRTLLanguage(lang))
+        ? result.map(stripArabicDiacritics)
+        : result;
     }
     // Fallback to random-words for English if fetch fails
     return generateWords(count, opts);
@@ -154,6 +161,7 @@ export function useTypingTest({
     const n = overrides.numbers ?? numbers;
     const d = "difficulty" in overrides ? overrides.difficulty : difficulty;
     const lang = overrides.language ?? language;
+    const sd = "showDiacritics" in overrides ? overrides.showDiacritics : showDiacritics;
     const wc = m === "time" ? 200 : m === "words" ? wo : 100;
 
     setQuoteAuthor(null);
@@ -162,7 +170,7 @@ export function useTypingTest({
       setWords(newWords);
       setQuoteAuthor(author);
     } else {
-      const newWords = await buildWords(lang, wc, { punctuation: p, numbers: n, difficulty: d });
+      const newWords = await buildWords(lang, wc, { punctuation: p, numbers: n, difficulty: d, showDiacritics: sd });
       setWords(newWords);
     }
     setTyped("");
@@ -185,7 +193,7 @@ export function useTypingTest({
     onFinished?.(false);
     onTypingActiveChange?.(false);
     inputRef.current?.focus();
-  }, [mode, quoteLength, wordOption, timeOption, punctuation, numbers, difficulty, language, buildWords, onFinished, onTypingActiveChange]);
+  }, [mode, quoteLength, wordOption, timeOption, punctuation, numbers, difficulty, language, showDiacritics, buildWords, onFinished, onTypingActiveChange]);
 
   const resetTestImmediate = useCallback(() => resetTestWith(), [resetTestWith]);
 
@@ -234,7 +242,7 @@ export function useTypingTest({
       setWords(initWords);
       setQuoteAuthor(author);
     } else {
-      buildWords(lang, wc, { punctuation: p, numbers: n, difficulty: d }).then((w) => setWords(w));
+      buildWords(lang, wc, { punctuation: p, numbers: n, difficulty: d, showDiacritics }).then((w) => setWords(w));
     }
     if (m === "time") setTimeLeft(to);
     inputRef.current?.focus();
@@ -249,6 +257,15 @@ export function useTypingTest({
       void resetTestWith({ language });
     }
   }, [language, resetTestWith]);
+
+  // ── React to diacritics toggle changes ───────────────────────────────────
+  const prevShowDiacriticsRef = useRef(showDiacritics);
+  useEffect(() => {
+    if (prevShowDiacriticsRef.current !== showDiacritics) {
+      prevShowDiacriticsRef.current = showDiacritics;
+      void resetTestWith({ showDiacritics });
+    }
+  }, [showDiacritics, resetTestWith]);
 
   // ── Helper callbacks ─────────────────────────────────────────────────────
   const markTypingActive = useCallback(() => {
@@ -621,6 +638,7 @@ export function useTypingTest({
     timeLeft, wordInputs, showControls, isFocused, resetting, isActivelyTyping,
     screenFade, wpm,
     // Computed
+    isRTL,
     controlsVisible, showResults, frozenStats: frozenStatsRef.current,
     // Refs
     inputRef, wordsContainerRef, activeWordRef,

@@ -15,6 +15,8 @@ export interface WordItemProps {
   elemRef?: React.RefObject<HTMLDivElement | null>;
   /** When true, the word fades nearly invisible (ghost mode for upcoming words). */
   dimmed?: boolean;
+  /** When true, render cursor on the right side (RTL languages). */
+  isRTL?: boolean;
 }
 
 export const WordItem = memo(function WordItem({
@@ -25,6 +27,7 @@ export const WordItem = memo(function WordItem({
   hasError,
   elemRef,
   dimmed = false,
+  isRTL = false,
 }: WordItemProps) {
   const cursorAtEnd = isActive && displayInput.length >= word.length;
 
@@ -53,14 +56,20 @@ export const WordItem = memo(function WordItem({
             {isActive && cIdx === displayInput.length && (
               <motion.span
                 layoutId="cursor-active"
-                className="typing-cursor absolute -left-px top-0.5 h-[1.2em] w-0.5 rounded-full bg-primary"
+                className={cn(
+                  "typing-cursor absolute top-0.5 h-[1.2em] w-0.5 rounded-full bg-primary",
+                  isRTL ? "-right-px" : "-left-px",
+                )}
                 transition={{ type: "spring", stiffness: 700, damping: 38, mass: 0.6 }}
               />
             )}
             {isActive && isLastChar && cursorAtEnd && (
               <motion.span
                 layoutId="cursor-active"
-                className="typing-cursor absolute -right-px top-0.5 h-[1.2em] w-0.5 rounded-full bg-primary"
+                className={cn(
+                  "typing-cursor absolute top-0.5 h-[1.2em] w-0.5 rounded-full bg-primary",
+                  isRTL ? "-left-px" : "-right-px",
+                )}
                 transition={{ type: "spring", stiffness: 700, damping: 38, mass: 0.6 }}
               />
             )}

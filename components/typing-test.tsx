@@ -36,7 +36,7 @@ export function TypingTest(props: TypingTestProps) {
     punctuation, numbers, difficulty,
     words, typed, wordIndex, started, rowOffset,
     timeLeft, wordInputs, isFocused, resetting, isActivelyTyping,
-    screenFade, wpm,
+    screenFade, wpm, isRTL,
     controlsVisible, showResults, frozenStats,
     inputRef, wordsContainerRef, activeWordRef,
     handleKeyDown, handleFocus, handleInputBlur, handleInputFocus,
@@ -148,6 +148,7 @@ export function TypingTest(props: TypingTestProps) {
           <LayoutGroup id="words">
             <motion.div
               className="flex flex-wrap gap-x-2.5 gap-y-1"
+              dir={isRTL ? "rtl" : undefined}
               animate={{
                 y: -rowOffset,
                 opacity: resetting ? 0 : isFocused ? 1 : 0.15,
@@ -178,6 +179,7 @@ export function TypingTest(props: TypingTestProps) {
                     hasError={hasError}
                     elemRef={isActive ? activeWordRef : undefined}
                     dimmed={dimmed}
+                    isRTL={isRTL}
                   />
                 );
               })}

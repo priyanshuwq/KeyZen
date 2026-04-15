@@ -161,6 +161,8 @@ interface SettingsContextType {
   setGhostMode: (v: boolean) => void;
   language: string;
   setLanguage: (l: string) => void;
+  showDiacritics: boolean;
+  setShowDiacritics: (v: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | null>(null);
@@ -196,6 +198,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [faahMode, setFaahModeState] = useState(false);
   const [ghostMode, setGhostModeState] = useState(false);
   const [language, setLanguageState] = useState("english");
+  const [showDiacritics, setShowDiacriticsState] = useState(true);
 
   // Rule 4: one-time hydration from localStorage on mount, applying DOM side
   // effects inline here instead of in separate reactive useEffects.
@@ -224,6 +227,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
 
     const savedLanguage = localStorage.getItem("tc-language");
     if (savedLanguage) setLanguageState(savedLanguage);
+
+    const savedShowDiacritics = localStorage.getItem("tc-show-diacritics");
+    if (savedShowDiacritics !== null) setShowDiacriticsState(savedShowDiacritics !== "false");
   });
 
   // Rule 3: setAccent / setFont are event handlers that apply DOM changes
@@ -270,6 +276,11 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("tc-language", l);
   };
 
+  const setShowDiacritics = (v: boolean) => {
+    setShowDiacriticsState(v);
+    localStorage.setItem("tc-show-diacritics", String(v));
+  };
+
   const fontCssFamily =
     FONT_OPTIONS.find((f) => f.id === font)?.cssFamily ?? "var(--font-mono)";
 
@@ -284,6 +295,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         faahMode, setFaahMode,
         ghostMode, setGhostMode,
         language, setLanguage,
+        showDiacritics, setShowDiacritics,
       }}
     >
       {children}
