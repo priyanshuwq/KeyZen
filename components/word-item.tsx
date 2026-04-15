@@ -50,7 +50,7 @@ export const WordItem = memo(function WordItem({
         const isLastChar = cIdx === word.length - 1;
 
         return (
-          <span key={cIdx} className="relative inline-block">
+          <span key={cIdx} className={cn("relative", isRTL ? "inline" : "inline-block")}>
             {/* Cursor before this char. Stable layoutId → Framer Motion FLIP-animates
                 the cursor smoothly when wordIndex changes (spacebar press). */}
             {isActive && cIdx === displayInput.length && (
