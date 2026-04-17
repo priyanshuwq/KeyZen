@@ -1,65 +1,106 @@
-"use client";
+"use client"
 
-import { AnimatePresence, motion, LayoutGroup } from "motion/react";
-import { useCallback, useRef, useState } from "react";
-import { IconPointer, IconRefresh } from "@tabler/icons-react";
-import { ResultsScreen } from "@/components/results-screen";
-import { TestControls } from "@/components/test-controls";
-import { WordItem } from "@/components/word-item";
-import { useTypingTest } from "@/hooks/use-typing-test";
-import { useSettings } from "@/components/settings-context";
-import { cn } from "@/lib/utils";
+import { AnimatePresence, motion, LayoutGroup } from "motion/react"
+import { useCallback, useRef, useState } from "react"
+import { IconLock, IconPointer, IconRefresh } from "@tabler/icons-react"
+import { ResultsScreen } from "@/components/results-screen"
+import { TestControls } from "@/components/test-controls"
+import { WordItem } from "@/components/word-item"
+import { useTypingTest } from "@/hooks/use-typing-test"
+import { useSettings } from "@/components/settings-context"
+import { cn } from "@/lib/utils"
 
 interface TypingTestProps {
-  onKeyHighlight?: (key: string | null) => void;
-  onFinished?: (finished: boolean) => void;
-  onTypingActiveChange?: (active: boolean) => void;
-  onFocusChange?: (focused: boolean) => void;
-  pauseTypingInputRefocus?: boolean;
+  onKeyHighlight?: (key: string | null) => void
+  onFinished?: (finished: boolean) => void
+  onTypingActiveChange?: (active: boolean) => void
+  onFocusChange?: (focused: boolean) => void
+  pauseTypingInputRefocus?: boolean
 }
 
 export function TypingTest(props: TypingTestProps) {
-  const { realtimeWpm, faahMode, ghostMode } = useSettings();
-  const faahAudioRef = useRef<HTMLAudioElement | null>(null);
+  const { realtimeWpm, faahMode, ghostMode } = useSettings()
+  const faahAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const onWrongKey = useCallback(() => {
-    if (!faahMode) return;
+    if (!faahMode) return
     if (!faahAudioRef.current) {
-      faahAudioRef.current = new Audio("/sounds/fahhhhh.mp3");
+      faahAudioRef.current = new Audio("/sounds/fahhhhh.mp3")
     }
-    faahAudioRef.current.currentTime = 0;
-    void faahAudioRef.current.play();
-  }, [faahMode]);
+    faahAudioRef.current.currentTime = 0
+    void faahAudioRef.current.play()
+  }, [faahMode])
 
   const {
-    mode, timeOption, wordOption, quoteLength,
-    punctuation, numbers, difficulty,
-    words, typed, wordIndex, started, rowOffset,
-    timeLeft, wordInputs, isFocused, resetting, isActivelyTyping,
-    screenFade, wpm, isRTL,
-    controlsVisible, showResults, frozenStats,
-    inputRef, wordsContainerRef, activeWordRef,
-    handleKeyDown, handleFocus, handleInputBlur, handleInputFocus,
-    handleMouseMove, handleResultsRestart, handleResultsNext,
-    onModeChange, onTimeOptionChange, onWordOptionChange, onQuoteLengthChange,
-    onPunctuationToggle, onNumbersToggle, onDifficultyToggle, onRestart,
-  } = useTypingTest({ ...props, onWrongKey });
+    mode,
+    timeOption,
+    wordOption,
+    quoteLength,
+    punctuation,
+    numbers,
+    difficulty,
+    words,
+    typed,
+    wordIndex,
+    started,
+    rowOffset,
+    timeLeft,
+    wordInputs,
+    isFocused,
+    resetting,
+    isActivelyTyping,
+    screenFade,
+    wpm,
+    isRTL,
+    capsLock,
+    controlsVisible,
+    showResults,
+    frozenStats,
+    inputRef,
+    wordsContainerRef,
+    activeWordRef,
+    handleKeyDown,
+    handleFocus,
+    handleInputBlur,
+    handleInputFocus,
+    handleMouseMove,
+    handleResultsRestart,
+    handleResultsNext,
+    onModeChange,
+    onTimeOptionChange,
+    onWordOptionChange,
+    onQuoteLengthChange,
+    onPunctuationToggle,
+    onNumbersToggle,
+    onDifficultyToggle,
+    onRestart,
+  } = useTypingTest({ ...props, onWrongKey })
 
   if (showResults) {
     return (
       <div
         className="w-full transition-all duration-150 ease-out"
-        style={{ opacity: screenFade, filter: screenFade < 1 ? "blur(4px)" : "none" }}
+        style={{
+          opacity: screenFade,
+          filter: screenFade < 1 ? "blur(4px)" : "none",
+        }}
       >
-        <ResultsScreen stats={frozenStats!} onRestart={handleResultsRestart} onNext={handleResultsNext} />
+        <ResultsScreen
+          stats={frozenStats!}
+          onRestart={handleResultsRestart}
+          onNext={handleResultsNext}
+        />
       </div>
-    );
+    )
   }
 
   return (
     <div
-      className="flex w-full flex-col max-w-5xl items-center gap-3 transition-all duration-150 ease-out"
-      style={{ opacity: screenFade, filter: screenFade < 1 ? "blur(4px)" : "none" }}
+      className="flex w-full max-w-5xl flex-col items-center gap-3 transition-all duration-150 ease-out"
+      style={{
+        opacity: screenFade,
+        filter: screenFade < 1 ? "blur(4px)" : "none",
+      }}
       onClick={handleFocus}
       onMouseMove={handleMouseMove}
     >
@@ -85,6 +126,25 @@ export function TypingTest(props: TypingTestProps) {
 
       {/* Words display */}
       <div className="relative w-full">
+        {/* Caps Lock indicator */}
+        <div className="pointer-events-none absolute top-3 right-0 left-0 z-30 flex items-center justify-center">
+          <AnimatePresence>
+            {capsLock && (
+              <motion.span
+                key="caps-lock"
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 4 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center gap-1.5 rounded border border-border bg-background/95 px-2 py-0.5 font-mono text-[10px] text-primary shadow-sm backdrop-blur"
+              >
+                <IconLock size={10} />
+                caps lock
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </div>
+
         {/* Timer / progress — always reserves space */}
         <motion.div
           className="mb-3 flex min-h-8 items-center gap-3"
@@ -95,7 +155,7 @@ export function TypingTest(props: TypingTestProps) {
             <span
               className={cn(
                 "font-mono text-2xl font-bold text-primary transition-opacity duration-200",
-                started ? "opacity-100" : "opacity-0",
+                started ? "opacity-100" : "opacity-0"
               )}
             >
               {timeLeft}
@@ -104,8 +164,8 @@ export function TypingTest(props: TypingTestProps) {
           {mode === "words" && (
             <span
               className={cn(
-                "font-mono text-2xl font-bold tabular-nums text-primary transition-opacity duration-200",
-                started ? "opacity-100" : "opacity-0",
+                "font-mono text-2xl font-bold text-primary tabular-nums transition-opacity duration-200",
+                started ? "opacity-100" : "opacity-0"
               )}
             >
               {wordIndex}/{wordOption}
@@ -122,7 +182,7 @@ export function TypingTest(props: TypingTestProps) {
           ref={wordsContainerRef}
           className={cn(
             "relative h-[7.8rem] w-full overflow-hidden text-2xl leading-relaxed",
-            isActivelyTyping && "is-typing",
+            isActivelyTyping && "is-typing"
           )}
           style={{ fontFamily: "var(--typing-font)" }}
         >
@@ -154,20 +214,30 @@ export function TypingTest(props: TypingTestProps) {
                 opacity: resetting ? 0 : isFocused ? 1 : 0.15,
                 filter: resetting ? "blur(4px)" : "blur(0px)",
               }}
-              transition={resetting
-                ? { duration: 0.15, ease: "easeOut" }
-                : { type: "spring", stiffness: 300, damping: 30, mass: 0.8 }
+              transition={
+                resetting
+                  ? { duration: 0.15, ease: "easeOut" }
+                  : { type: "spring", stiffness: 300, damping: 30, mass: 0.8 }
               }
             >
               {words.map((word, wIdx) => {
-                const isActive = wIdx === wordIndex;
-                const isPast = wIdx < wordIndex;
-                const isFuture = !isActive && !isPast;
-                const displayInput = isActive ? typed : isPast ? (wordInputs[wIdx] ?? "") : "";
-                const hasError = isPast && wordInputs[wIdx] !== word;
-                const currentWordDone = typed.length >= (words[wordIndex]?.length ?? 0);
-                const isNextWord = wIdx === wordIndex + 1;
-                const dimmed = ghostMode && isFocused && isFuture && !(currentWordDone && isNextWord);
+                const isActive = wIdx === wordIndex
+                const isPast = wIdx < wordIndex
+                const isFuture = !isActive && !isPast
+                const displayInput = isActive
+                  ? typed
+                  : isPast
+                    ? (wordInputs[wIdx] ?? "")
+                    : ""
+                const hasError = isPast && wordInputs[wIdx] !== word
+                const currentWordDone =
+                  typed.length >= (words[wordIndex]?.length ?? 0)
+                const isNextWord = wIdx === wordIndex + 1
+                const dimmed =
+                  ghostMode &&
+                  isFocused &&
+                  isFuture &&
+                  !(currentWordDone && isNextWord)
 
                 return (
                   <WordItem
@@ -181,7 +251,7 @@ export function TypingTest(props: TypingTestProps) {
                     dimmed={dimmed}
                     isRTL={isRTL}
                   />
-                );
+                )
               })}
             </motion.div>
           </LayoutGroup>
@@ -212,37 +282,53 @@ export function TypingTest(props: TypingTestProps) {
 
       {/* Keyboard shortcuts hint */}
       <motion.div
-        animate={{ opacity: (mode === "zen" && started) ? 1 : controlsVisible ? 1 : 0 }}
+        animate={{
+          opacity: mode === "zen" && started ? 1 : controlsVisible ? 1 : 0,
+        }}
         transition={{ duration: 0.4 }}
         className="flex items-center gap-4 text-xs text-muted-foreground"
       >
         {mode === "zen" && started ? (
           <span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">shift</kbd>
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+              shift
+            </kbd>
             {" + "}
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">enter</kbd>
-            {" "}- end test
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+              enter
+            </kbd>{" "}
+            - end test
           </span>
         ) : (
           <span>
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">tab</kbd>
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+              tab
+            </kbd>
             {" + "}
-            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">enter</kbd>
-            {" "}- restart test
+            <kbd className="rounded border border-border bg-muted px-1.5 py-0.5 font-mono text-[10px]">
+              enter
+            </kbd>{" "}
+            - restart test
           </span>
         )}
       </motion.div>
     </div>
-  );
+  )
 }
 
-function RestartButton({ controlsVisible, onRestart }: { controlsVisible: boolean; onRestart: () => void }) {
-  const [spinning, setSpinning] = useState(false);
+function RestartButton({
+  controlsVisible,
+  onRestart,
+}: {
+  controlsVisible: boolean
+  onRestart: () => void
+}) {
+  const [spinning, setSpinning] = useState(false)
 
   function handleClick() {
-    setSpinning(true);
-    setTimeout(() => setSpinning(false), 600);
-    onRestart();
+    setSpinning(true)
+    setTimeout(() => setSpinning(false), 600)
+    onRestart()
   }
 
   return (
@@ -252,7 +338,7 @@ function RestartButton({ controlsVisible, onRestart }: { controlsVisible: boolea
       onClick={handleClick}
       className={cn(
         "rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground",
-        !controlsVisible && "pointer-events-none",
+        !controlsVisible && "pointer-events-none"
       )}
       title="Restart test"
     >
@@ -266,5 +352,5 @@ function RestartButton({ controlsVisible, onRestart }: { controlsVisible: boolea
         <IconRefresh size={18} />
       </span>
     </motion.button>
-  );
+  )
 }

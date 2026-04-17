@@ -29,6 +29,17 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
   const [fontPickerOpen, setFontPickerOpen] = useState(false);
   const [langPickerOpen, setLangPickerOpen] = useState(false);
   const [languages, setLanguages] = useState<Language[]>([]);
+  const [cacheInfo, setCacheInfo] = useState<string | null>(null);
+
+  const clearSWCache = async () => {
+    if (!("caches" in window)) { setCacheInfo("Cache API not available"); return; }
+    const keys = await caches.keys();
+    await Promise.all(keys.map((k) => caches.delete(k)));
+    setCacheInfo(`Cleared ${keys.length} cache${keys.length !== 1 ? "s" : ""}`);
+    setTimeout(() => setCacheInfo(null), 3000);
+  };
+
+
   const selectedFont = FONT_OPTIONS.find((f) => f.id === font);
   const selectedLang = languages.find((l) => l.code === language);
 
@@ -289,6 +300,30 @@ export function SettingsPanel({ open, onClose }: SettingsPanelProps) {
                     </Command>
                   </PopoverContent>
                 </Popover>
+              </section>
+
+              <section>
+                <SectionLabel>Cache</SectionLabel>
+                <div className="mt-3 flex flex-col gap-2">
+                  <button
+                    onClick={() => void clearSWCache()}
+                    className="flex h-8 w-full items-center justify-center rounded-lg border border-input bg-background px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+                  >
+                    Clear SW Cache
+                  </button>
+                  <AnimatePresence>
+                    {cacheInfo && (
+                      <motion.p
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="text-center text-[10px] text-primary"
+                      >
+                        {cacheInfo}
+                      </motion.p>
+                    )}
+                  </AnimatePresence>
+                </div>
               </section>
 
             </div>

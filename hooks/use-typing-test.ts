@@ -78,6 +78,7 @@ export function useTypingTest({
   const [resetting, setResetting] = useState(false);
   const [isActivelyTyping, setIsActivelyTyping] = useState(false);
   const [screenFade, setScreenFade] = useState(1);
+  const [capsLock, setCapsLock] = useState(false);
 
   // ── Refs ─────────────────────────────────────────────────────────────────
   const correctCharsRef = useRef(0);
@@ -258,6 +259,17 @@ export function useTypingTest({
     }
   }, [language, resetTestWith]);
 
+  // ── Track Caps Lock state ────────────────────────────────────────────────
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => setCapsLock(e.getModifierState("CapsLock"));
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("keyup", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("keyup", onKey);
+    };
+  }, []);
+
   // ── React to diacritics toggle changes ───────────────────────────────────
   const prevShowDiacriticsRef = useRef(showDiacritics);
   useEffect(() => {
@@ -362,6 +374,9 @@ export function useTypingTest({
 
       // Don't start the test (or process further) for non-character keys like Shift, Enter, ArrowLeft, etc.
       if (e.key.length > 1 && e.key !== "Backspace") return;
+
+      // Don't start the test on Backspace when there's nothing to delete
+      if (e.key === "Backspace" && !started && typed.length === 0) return;
 
       if (!started) {
         setStarted(true);
@@ -636,7 +651,7 @@ export function useTypingTest({
     punctuation, numbers, difficulty,
     words, typed, wordIndex, started, rowOffset, finished,
     timeLeft, wordInputs, showControls, isFocused, resetting, isActivelyTyping,
-    screenFade, wpm,
+    screenFade, wpm, capsLock,
     // Computed
     isRTL,
     controlsVisible, showResults, frozenStats: frozenStatsRef.current,
