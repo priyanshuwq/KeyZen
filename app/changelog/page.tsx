@@ -253,14 +253,6 @@ export default async function ChangelogPage() {
           >
             ← Back to typing test
           </Link>
-          <a
-            href={`${REPO_URL}/commits/main`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-(family-name:--font-mono) text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            all commits on github ↗
-          </a>
         </footer>
       </div>
     </main>
