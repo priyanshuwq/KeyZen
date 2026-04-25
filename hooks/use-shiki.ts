@@ -57,9 +57,6 @@ export function useShikiTokens(
     }
 
     const codeToHighlight = rawCode ?? words.join("\n");
-    // Include a words fingerprint so the effect re-runs when words update
-    // after a language/chapter switch (words lag behind rawCode by ~150 ms
-    // due to the reset animation delay, causing colour misalignment).
     const wordsKey = words.join("|");
     const key = `${lang}:${theme}:${codeToHighlight}:${wordsKey}`;
     if (key === prevKey.current) return;
@@ -124,9 +121,6 @@ export function useShikiTokens(
     })();
 
     return () => { cancelled = true; };
-  // `words` must be in the dep array (not just rawCode) so that when the
-  // word list updates after the animation delay, the effect fires and
-  // re-maps colours to the now-correct word positions.
   }, [words, lang, enabled, theme, rawCode]);
 
   return colorMap;
