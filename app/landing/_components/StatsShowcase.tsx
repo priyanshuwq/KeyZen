@@ -29,6 +29,7 @@ function OdometerNumber({
   delay = 0,
   duration = 1.1,
   margin = "-80px",
+  inView,
 }: {
   value: number
   suffix?: string
@@ -38,9 +39,11 @@ function OdometerNumber({
   delay?: number
   duration?: number
   margin?: InViewMargin
+  inView?: boolean
 }) {
   const ref = useRef<HTMLSpanElement>(null)
-  const isInView = useInView(ref, { once: true, margin })
+  const localInView = useInView(ref, { once: true, margin })
+  const isInView = inView ?? localInView
   const prefersReducedMotion = useReducedMotion()
   const roundedValue = Math.round(value)
   const sign = roundedValue < 0 ? "-" : prefix
@@ -344,6 +347,7 @@ function AccuracyBreakdown() {
               suffix="%"
               delay={0.28 + 0.1 * index}
               duration={0.7}
+              inView={isInView}
             />
           </span>
         </div>
