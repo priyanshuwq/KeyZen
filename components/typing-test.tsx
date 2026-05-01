@@ -555,7 +555,7 @@ function RestartButton({
         "rounded-lg p-2 text-muted-foreground transition-colors hover:text-foreground",
         !controlsVisible && "pointer-events-none"
       )}
-      title="Restart test"
+      title="Random chapter"
     >
       <span
         style={{
